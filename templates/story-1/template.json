@@ -1,0 +1,62 @@
+{
+    "id": "story-1",
+    "name": "STORY 1",
+    "description": "Jednoduchá Instagram Story.",
+
+    "canvas": {
+        "width": 1080,
+        "height": 1920,
+        "background": "#000000"
+    },
+
+    "fields": [
+        {
+            "id": "text",
+            "type": "textarea",
+            "label": "Text",
+            "required": true,
+            "placeholder": "Napiš text..."
+        }
+    ],
+
+    "background": {
+        "type": "color"
+    },
+
+    "elements": [
+        {
+            "type": "text",
+
+            "field": "text",
+
+            "box": {
+                "x": 108,
+                "y": 0,
+                "width": 864,
+                "height": 1920
+            },
+
+            "font": {
+                "family": "Montserrat",
+                "weight": 800,
+                "size": 70,
+                "minSize": 30,
+                "shrinkStep": 1
+            },
+
+            "color": "#FFFFFF",
+
+            "align": "center",
+            "verticalAlign": "center",
+
+            "lineHeight": 1.15,
+
+            "maxLines": 8,
+
+            "wrap": "word",
+            "breakLongWords": true,
+
+            "preserveNewlines": true
+        }
+    ]
+}

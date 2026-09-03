@@ -7,6 +7,27 @@
 
     "fields": [
         {
+            "id": "backgroundType",
+            "type": "select",
+            "label": "Pozadí",
+            "options": [
+                {
+                    "value": "default",
+                    "label": "Základní"
+                },
+                {
+                    "value": "custom",
+                    "label": "Vlastní obrázek"
+                }
+            ]
+        },
+        {
+            "id": "background",
+            "type": "image",
+            "label": "Vlastní obrázek",
+            "required": false
+        },
+        {
             "id": "text",
             "type": "textarea",
             "label": "Text",

@@ -326,6 +326,9 @@ function render() {
         return;
     }
 
+    /*
+     * Vyčistí celé plátno před každým novým vykreslením.
+     */
     ctx.clearRect(
         0,
         0,
@@ -333,11 +336,27 @@ function render() {
         canvas.height
     );
 
+    /*
+     * Vykreslí pozadí podle konfigurace
+     * aktuální šablony.
+     *
+     * drawCanvasBackground() automaticky
+     * rozhodne, zda použít základní nebo
+     * vlastní obrázek.
+     */
     drawCanvasBackground(template);
 
+    /*
+     * Vykreslí všechny ostatní prvky
+     * definované v template.json.
+     */
     drawElements(template);
-}
 
+    /*
+     * Aktualizuje stav tlačítka pro stažení.
+     */
+    updateDownloadState();
+}
 
 /* =========================================================
    BACKGROUND

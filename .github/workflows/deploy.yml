@@ -1,114 +1,65 @@
-name: Deploy to GitHub Pages
+- name: Generate template index
+  run: |
+    python3 <<'PY'
+    import json
+    import os
 
-on:
-  push:
-    branches:
-      - main
+    templates_dir = "templates"
+    templates = []
 
-permissions:
-  contents: read
-  pages: write
-  id-token: write
+    for folder in sorted(os.listdir(templates_dir)):
 
-concurrency:
-  group: pages
-  cancel-in-progress: true
+        folder_path = os.path.join(
+            templates_dir,
+            folder
+        )
 
-jobs:
+        config_path = os.path.join(
+            folder_path,
+            "template.json"
+        )
 
-  build:
-    runs-on: ubuntu-latest
+        if not os.path.isdir(folder_path):
+            continue
 
-    steps:
+        if not os.path.isfile(config_path):
+            continue
 
-      - name: Checkout
-        uses: actions/checkout@v4
+        try:
+            with open(
+                config_path,
+                "r",
+                encoding="utf-8"
+            ) as f:
+                config = json.load(f)
 
-      - name: Generate template index
-        run: |
-          python3 <<'PY'
-          import json
-          import os
+            templates.append({
+                "id": config.get("id", folder),
+                "name": config.get("name", folder),
+                "description": config.get(
+                    "description",
+                    ""
+                )
+            })
 
-          templates_dir = "templates"
-          templates = []
+        except Exception as error:
+            print(
+                f"Nelze načíst {config_path}: {error}"
+            )
 
-          for folder in sorted(os.listdir(templates_dir)):
+    with open(
+        "templates/index.json",
+        "w",
+        encoding="utf-8"
+    ) as f:
+        json.dump(
+            templates,
+            f,
+            ensure_ascii=False,
+            indent=4
+        )
 
-              folder_path = os.path.join(
-                  templates_dir,
-                  folder
-              )
-
-              config_path = os.path.join(
-                  folder_path,
-                  "template.json"
-              )
-
-              if not os.path.isdir(folder_path):
-                  continue
-
-              if not os.path.isfile(config_path):
-                  continue
-
-              try:
-                  with open(
-                      config_path,
-                      "r",
-                      encoding="utf-8"
-                  ) as f:
-                      config = json.load(f)
-
-                  templates.append({
-                      "id": config.get("id", folder),
-                      "name": config.get("name", folder),
-                      "description": config.get(
-                          "description",
-                          ""
-                      )
-                  })
-
-              except Exception as error:
-                  print(
-                      f"Nelze načíst {config_path}: {error}"
-                  )
-
-          with open(
-              "templates/index.json",
-              "w",
-              encoding="utf-8"
-          ) as f:
-              json.dump(
-                  templates,
-                  f,
-                  ensure_ascii=False,
-                  indent=4
-              )
-
-          print(
-              f"Nalezeno šablon: {len(templates)}"
-          )
-          PY
-
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
-
-      - name: Upload website
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: .
-
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-
-    runs-on: ubuntu-latest
-
-    needs: build
-
-    steps:
-
-      - name: Deploy
-        id: deployment
-        uses: actions/deploy-pages@v4
+    print(
+        f"Nalezeno šablon: {len(templates)}"
+    )
+    PY

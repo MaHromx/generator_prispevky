@@ -75,11 +75,11 @@
             "field": "text",
 
             "box": {
-                "x": 108,
+                "x": 216,
                 "y": 0,
                 "width": 648,
                 "height": 1350
-            },
+            }
 
             "font": {
                 "family": "Montserrat",

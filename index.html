@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Generátor grafik</title>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <header>
+        <h1>Generátor grafik</h1>
+        <p>Vyber šablonu a vytvoř grafiku.</p>
+    </header>
+
+    <main>
+
+        <!-- Výběr šablony -->
+        <section id="template-selection">
+            <h2>Vyber šablonu</h2>
+
+            <div id="template-list">
+                <p>Načítám šablony...</p>
+            </div>
+        </section>
+
+
+        <!-- Konfigurace vybrané šablony -->
+        <section id="editor" class="hidden">
+
+            <button id="back-button">← Zpět na šablony</button>
+
+            <h2 id="template-title"></h2>
+
+            <div class="editor-layout">
+
+                <div id="form-container"></div>
+
+                <div class="preview-container">
+                    <h3>Náhled</h3>
+
+                    <canvas id="preview-canvas"></canvas>
+
+                    <button id="download-button">
+                        Stáhnout PNG
+                    </button>
+                </div>
+
+            </div>
+
+        </section>
+
+    </main>
+
+    <script src="app.js"></script>
+
+</body>
+</html>

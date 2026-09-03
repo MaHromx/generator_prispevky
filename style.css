@@ -4,26 +4,35 @@
 
 body {
     margin: 0;
-    font-family: "Montserrat", Arial, sans-serif;
+    font-family: Arial, sans-serif;
     background: #f4f4f4;
     color: #222;
 }
 
+
+/* =========================================================
+   HEADER
+========================================================= */
+
 header {
-    background: white;
+    background: #ffffff;
     padding: 25px;
-    border-bottom: 1px solid #ddd;
+    border-bottom: 1px solid #dddddd;
 }
 
 header h1 {
     margin: 0 0 5px;
-    font-weight: 700;
 }
 
 header p {
     margin: 0;
-    color: #666;
+    color: #666666;
 }
+
+
+/* =========================================================
+   MAIN
+========================================================= */
 
 main {
     max-width: 1200px;
@@ -31,46 +40,83 @@ main {
     padding: 0 20px;
 }
 
+
+/* =========================================================
+   SECTIONS
+========================================================= */
+
 section {
-    background: white;
+    background: #ffffff;
     padding: 25px;
     border-radius: 12px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
 }
 
 .hidden {
-    display: none;
+    display: none !important;
 }
 
 
-/* Výběr šablon */
+/* =========================================================
+   TEMPLATE LIST
+========================================================= */
 
 #template-list {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    grid-template-columns: repeat(
+        auto-fill,
+        minmax(220px, 1fr)
+    );
     gap: 15px;
 }
 
 .template-card {
-    border: 1px solid #ddd;
+    border: 1px solid #dddddd;
     border-radius: 10px;
     padding: 20px;
     cursor: pointer;
-    background: white;
-    transition: 0.2s;
+    background: #ffffff;
+    transition:
+        border-color 0.2s ease,
+        transform 0.2s ease,
+        box-shadow 0.2s ease;
 }
 
 .template-card:hover {
     border-color: #014EA1;
     transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
 }
 
 .template-card h3 {
     margin-top: 0;
+    margin-bottom: 8px;
+}
+
+.template-card p {
+    margin-bottom: 0;
+    color: #666666;
+    line-height: 1.5;
 }
 
 
-/* Editor */
+/* =========================================================
+   EDITOR
+========================================================= */
+
+#back-button {
+    background: #666666;
+    margin-bottom: 20px;
+}
+
+#template-title {
+    margin-top: 0;
+}
+
+
+/* =========================================================
+   EDITOR LAYOUT
+========================================================= */
 
 .editor-layout {
     display: grid;
@@ -78,6 +124,11 @@ section {
     gap: 30px;
     margin-top: 25px;
 }
+
+
+/* =========================================================
+   FORM
+========================================================= */
 
 #form-container {
     display: flex;
@@ -98,61 +149,143 @@ section {
 .form-field input,
 .form-field textarea,
 .form-field select {
+    width: 100%;
     padding: 10px;
-    border: 1px solid #ccc;
+    border: 1px solid #cccccc;
     border-radius: 7px;
     font-size: 16px;
+    font-family: inherit;
+    background: #ffffff;
+    color: #222222;
+}
+
+.form-field input:focus,
+.form-field textarea:focus,
+.form-field select:focus {
+    outline: none;
+    border-color: #014EA1;
+    box-shadow: 0 0 0 2px rgba(1, 78, 161, 0.1);
 }
 
 .form-field textarea {
     min-height: 120px;
     resize: vertical;
+    line-height: 1.5;
 }
 
 
-/* Preview */
+/* =========================================================
+   FILE INPUT
+========================================================= */
+
+.form-field input[type="file"] {
+    padding: 8px;
+    cursor: pointer;
+}
+
+
+/* =========================================================
+   PREVIEW
+========================================================= */
 
 .preview-container {
     text-align: center;
 }
 
+.preview-container h3 {
+    margin-top: 0;
+}
+
 #preview-canvas {
+    display: block;
     max-width: 100%;
     height: auto;
-    border: 1px solid #ddd;
-    background: #eee;
+    margin: 0 auto;
+    border: 1px solid #dddddd;
+    background: #eeeeee;
 }
+
+
+/* =========================================================
+   BUTTONS
+========================================================= */
 
 button {
     border: none;
     border-radius: 7px;
     padding: 12px 18px;
     background: #014EA1;
-    color: white;
+    color: #ffffff;
     font-size: 15px;
+    font-family: inherit;
     cursor: pointer;
+    transition:
+        opacity 0.2s ease,
+        transform 0.1s ease;
 }
 
 button:hover {
     opacity: 0.9;
 }
 
-#back-button {
-    background: #666;
-    margin-bottom: 20px;
+button:active {
+    transform: scale(0.98);
 }
+
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+button:disabled:hover {
+    opacity: 0.5;
+}
+
+
+/* =========================================================
+   DOWNLOAD BUTTON
+========================================================= */
 
 #download-button {
     margin-top: 15px;
 }
 
 
-/* Mobil */
+/* =========================================================
+   HIDDEN FORM FIELDS
+========================================================= */
+
+.form-field[style*="display: none"] {
+    display: none !important;
+}
+
+
+/* =========================================================
+   RESPONSIVE
+========================================================= */
 
 @media (max-width: 800px) {
 
+    main {
+        margin: 15px auto;
+        padding: 0 12px;
+    }
+
+    section {
+        padding: 18px;
+        border-radius: 10px;
+    }
+
     .editor-layout {
+        grid-template-columns: 1fr;
+        gap: 25px;
+    }
+
+    #template-list {
         grid-template-columns: 1fr;
     }
 
+    .preview-container {
+        order: -1;
+    }
 }

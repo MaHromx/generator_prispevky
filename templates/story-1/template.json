@@ -11,6 +11,36 @@
 
     "fields": [
         {
+            "id": "backgroundType",
+            "type": "select",
+            "label": "Pozadí",
+            "options": [
+                {
+                    "value": "default",
+                    "label": "Základní"
+                },
+                {
+                    "value": "custom",
+                    "label": "Vlastní obrázek"
+                }
+            ],
+            "default": "default"
+        },
+        {
+            "id": "background",
+            "type": "image",
+            "label": "Vlastní obrázek",
+            "accept": "image/*",
+            "visibleWhen": {
+                "field": "backgroundType",
+                "equals": "custom"
+            },
+            "requiredWhen": {
+                "field": "backgroundType",
+                "equals": "custom"
+            }
+        },
+        {
             "id": "text",
             "type": "textarea",
             "label": "Text",
@@ -20,7 +50,22 @@
     ],
 
     "background": {
-        "type": "color"
+        "type": "image",
+
+        "sourceField": "background",
+
+        "default": {
+            "type": "asset",
+            "src": "default.jpg"
+        },
+
+        "fit": "cover",
+        "grayscale": true,
+
+        "overlay": {
+            "color": "#014EA1",
+            "opacity": 0.81
+        }
     },
 
     "elements": [
@@ -45,7 +90,6 @@
             },
 
             "color": "#FFFFFF",
-
             "align": "center",
             "verticalAlign": "center",
 

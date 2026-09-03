@@ -2,8 +2,12 @@
     "id": "post-1",
     "name": "POST 1",
     "description": "Instagramový příspěvek 1080 × 1350 px.",
-    "width": 1080,
-    "height": 1350,
+
+    "canvas": {
+        "width": 1080,
+        "height": 1350,
+        "background": "#000000"
+    },
 
     "fields": [
         {
@@ -19,19 +23,85 @@
                     "value": "custom",
                     "label": "Vlastní obrázek"
                 }
-            ]
+            ],
+            "default": "default"
         },
         {
             "id": "background",
             "type": "image",
             "label": "Vlastní obrázek",
-            "required": false
+            "accept": "image/*",
+            "visibleWhen": {
+                "field": "backgroundType",
+                "equals": "custom"
+            },
+            "requiredWhen": {
+                "field": "backgroundType",
+                "equals": "custom"
+            }
         },
         {
             "id": "text",
             "type": "textarea",
             "label": "Text",
-            "required": true
+            "required": true,
+            "placeholder": "Napiš text..."
+        }
+    ],
+
+    "background": {
+        "type": "image",
+
+        "sourceField": "background",
+
+        "default": {
+            "type": "asset",
+            "src": "default.jpg"
+        },
+
+        "fit": "cover",
+        "grayscale": true,
+
+        "overlay": {
+            "color": "#014EA1",
+            "opacity": 0.81
+        }
+    },
+
+    "elements": [
+        {
+            "type": "text",
+
+            "field": "text",
+
+            "box": {
+                "x": 108,
+                "y": 0,
+                "width": 648,
+                "height": 1350
+            },
+
+            "font": {
+                "family": "Montserrat",
+                "weight": 800,
+                "size": 72.63,
+                "minSize": 30,
+                "shrinkStep": 1
+            },
+
+            "color": "#FFFFFF",
+
+            "align": "center",
+            "verticalAlign": "center",
+
+            "lineHeight": 1.15,
+
+            "maxLines": 5,
+
+            "wrap": "word",
+            "breakLongWords": true,
+
+            "preserveNewlines": true
         }
     ]
 }

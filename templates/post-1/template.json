@@ -1,0 +1,16 @@
+{
+    "id": "post-1",
+    "name": "POST 1",
+    "description": "Instagramový příspěvek 1080 × 1350 px.",
+    "width": 1080,
+    "height": 1350,
+
+    "fields": [
+        {
+            "id": "text",
+            "type": "textarea",
+            "label": "Text",
+            "required": true
+        }
+    ]
+}

@@ -345,6 +345,9 @@ function render() {
 function drawCanvasBackground(template) {
     const background = template.background;
 
+    /*
+     * Základní barva plátna.
+     */
     ctx.fillStyle =
         template.canvas.background || "#000000";
 
@@ -357,22 +360,55 @@ function drawCanvasBackground(template) {
 
     let image = null;
 
+    /*
+     * Zjistíme, jaký typ pozadí je právě vybraný.
+     */
+    const backgroundType =
+        state.values.backgroundType;
+
+    /*
+     * VLASTNÍ OBRÁZEK
+     *
+     * Vlastní obrázek použijeme pouze tehdy,
+     * pokud je skutečně vybraná možnost "custom"
+     * a obrázek byl nahrán.
+     */
     if (
+        backgroundType === "custom" &&
         background.sourceField &&
         state.images[background.sourceField]
     ) {
-        image = state.images[background.sourceField];
-
-    } else if (
-        background.default?.type === "asset"
-    ) {
-        image = state.assets.defaultBackground;
+        image =
+            state.images[background.sourceField];
     }
 
+    /*
+     * ZÁKLADNÍ OBRÁZEK
+     *
+     * Pokud je vybraná možnost "default",
+     * vždy použijeme výchozí obrázek šablony.
+     */
+    if (
+        backgroundType !== "custom" &&
+        background.default?.type === "asset"
+    ) {
+        image =
+            state.assets.defaultBackground;
+    }
+
+    /*
+     * Pokud je vybrané vlastní pozadí,
+     * ale obrázek ještě nebyl nahrán,
+     * nic dalšího nekreslíme.
+     */
     if (!image) {
         return;
     }
 
+    /*
+     * Obrázek roztáhneme přes celé plátno
+     * a případně převedeme do odstínů šedi.
+     */
     drawImageCover(
         image,
         0,
@@ -382,6 +418,9 @@ function drawCanvasBackground(template) {
         background.grayscale
     );
 
+    /*
+     * Barevný overlay přes celý obrázek.
+     */
     if (background.overlay) {
         ctx.fillStyle = hexToRgba(
             background.overlay.color,

@@ -24,6 +24,72 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Generate template index
+        run: |
+          python3 <<'PY'
+          import json
+          import os
+
+          templates_dir = "templates"
+          templates = []
+
+          for folder in sorted(os.listdir(templates_dir)):
+
+              folder_path = os.path.join(
+                  templates_dir,
+                  folder
+              )
+
+              config_path = os.path.join(
+                  folder_path,
+                  "template.json"
+              )
+
+              if not os.path.isdir(folder_path):
+                  continue
+
+              if not os.path.isfile(config_path):
+                  continue
+
+              try:
+                  with open(
+                      config_path,
+                      "r",
+                      encoding="utf-8"
+                  ) as f:
+                      config = json.load(f)
+
+                  templates.append({
+                      "id": config.get("id", folder),
+                      "name": config.get("name", folder),
+                      "description": config.get(
+                          "description",
+                          ""
+                      )
+                  })
+
+              except Exception as error:
+                  print(
+                      f"Nelze načíst {config_path}: {error}"
+                  )
+
+          with open(
+              "templates/index.json",
+              "w",
+              encoding="utf-8"
+          ) as f:
+              json.dump(
+                  templates,
+                  f,
+                  ensure_ascii=False,
+                  indent=4
+              )
+
+          print(
+              f"Nalezeno šablon: {len(templates)}"
+          )
+          PY
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 

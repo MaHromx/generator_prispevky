@@ -1,0 +1,157 @@
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #f4f4f4;
+    color: #222;
+}
+
+header {
+    background: white;
+    padding: 25px;
+    border-bottom: 1px solid #ddd;
+}
+
+header h1 {
+    margin: 0 0 5px;
+}
+
+header p {
+    margin: 0;
+    color: #666;
+}
+
+main {
+    max-width: 1200px;
+    margin: 30px auto;
+    padding: 0 20px;
+}
+
+section {
+    background: white;
+    padding: 25px;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+}
+
+.hidden {
+    display: none;
+}
+
+
+/* Výběr šablon */
+
+#template-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 15px;
+}
+
+.template-card {
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    padding: 20px;
+    cursor: pointer;
+    background: white;
+    transition: 0.2s;
+}
+
+.template-card:hover {
+    border-color: #014EA1;
+    transform: translateY(-2px);
+}
+
+.template-card h3 {
+    margin-top: 0;
+}
+
+
+/* Editor */
+
+.editor-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+    margin-top: 25px;
+}
+
+#form-container {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+
+.form-field label {
+    font-weight: bold;
+}
+
+.form-field input,
+.form-field textarea,
+.form-field select {
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 7px;
+    font-size: 16px;
+}
+
+.form-field textarea {
+    min-height: 120px;
+    resize: vertical;
+}
+
+
+/* Preview */
+
+.preview-container {
+    text-align: center;
+}
+
+#preview-canvas {
+    max-width: 100%;
+    height: auto;
+    border: 1px solid #ddd;
+    background: #eee;
+}
+
+button {
+    border: none;
+    border-radius: 7px;
+    padding: 12px 18px;
+    background: #014EA1;
+    color: white;
+    font-size: 15px;
+    cursor: pointer;
+}
+
+button:hover {
+    opacity: 0.9;
+}
+
+#back-button {
+    background: #666;
+    margin-bottom: 20px;
+}
+
+#download-button {
+    margin-top: 15px;
+}
+
+
+/* Mobil */
+
+@media (max-width: 800px) {
+
+    .editor-layout {
+        grid-template-columns: 1fr;
+    }
+
+}

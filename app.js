@@ -1,290 +1,328 @@
-let templates = [];
-let currentTemplate = null;
-let currentImage = null;
+const TEMPLATE_INDEX_URL = "templates/index.json";
 
-const canvas = document.getElementById("preview-canvas");
-const ctx = canvas.getContext("2d");
-
-const templateSelection = document.getElementById("template-selection");
-const editor = document.getElementById("editor");
+const state = {
+    templates: [],
+    currentTemplate: null,
+    values: {},
+    images: {},
+    assets: {}
+};
 
 const templateList = document.getElementById("template-list");
-const templateTitle = document.getElementById("template-title");
+const templateSelection = document.getElementById("template-selection");
+const editor = document.getElementById("editor");
 const formContainer = document.getElementById("form-container");
-
-const backButton = document.getElementById("back-button");
+const templateTitle = document.getElementById("template-title");
+const canvas = document.getElementById("preview-canvas");
 const downloadButton = document.getElementById("download-button");
+const backButton = document.getElementById("back-button");
 
+const ctx = canvas.getContext("2d");
 
-// --------------------------------------------------
-// NAČTENÍ SEZNAMU ŠABLON
-// --------------------------------------------------
+init();
 
-async function loadTemplates() {
-
+async function init() {
     try {
-
-        const response = await fetch("templates/index.json");
+        const response = await fetch(TEMPLATE_INDEX_URL);
 
         if (!response.ok) {
             throw new Error("Nepodařilo se načíst seznam šablon.");
         }
 
-        templates = await response.json();
+        state.templates = await response.json();
 
-        showTemplateSelection();
-
+        renderTemplateList();
     } catch (error) {
-
         console.error(error);
 
         templateList.innerHTML = `
-            <p>
-                Nepodařilo se načíst šablony.
-            </p>
+            <p>Nepodařilo se načíst šablony.</p>
         `;
     }
 }
 
 
-// --------------------------------------------------
-// ZOBRAZENÍ ŠABLON
-// --------------------------------------------------
+/* =========================================================
+   TEMPLATE LIST
+========================================================= */
 
-function showTemplateSelection() {
-
-    templateSelection.classList.remove("hidden");
-    editor.classList.add("hidden");
-
+function renderTemplateList() {
     templateList.innerHTML = "";
 
-    templates.forEach(template => {
+    if (state.templates.length === 0) {
+        templateList.innerHTML = `
+            <p>Nejsou dostupné žádné šablony.</p>
+        `;
+        return;
+    }
 
+    state.templates.forEach(template => {
         const card = document.createElement("div");
 
         card.className = "template-card";
 
         card.innerHTML = `
-            <h3>${template.name}</h3>
-            <p>${template.description || ""}</p>
+            <h3>${escapeHtml(template.name)}</h3>
+            <p>${escapeHtml(template.description || "")}</p>
         `;
 
         card.addEventListener("click", () => {
-            openTemplate(template);
+            openTemplate(template.id);
         });
 
         templateList.appendChild(card);
-
     });
 }
 
 
-// --------------------------------------------------
-// OTEVŘENÍ ŠABLONY
-// --------------------------------------------------
+/* =========================================================
+   OPEN TEMPLATE
+========================================================= */
 
-async function openTemplate(template) {
-
+async function openTemplate(templateId) {
     try {
-
         const response = await fetch(
-            `templates/${template.id}/template.json`
+            `templates/${encodeURIComponent(templateId)}/template.json`
         );
 
         if (!response.ok) {
-            throw new Error("Konfigurace šablony nebyla nalezena.");
+            throw new Error("Šablonu se nepodařilo načíst.");
         }
 
-        currentTemplate = await response.json();
+        const template = await response.json();
+
+        state.currentTemplate = template;
+        state.values = {};
+        state.images = {};
+        state.assets = {};
+
+        template.fields.forEach(field => {
+            if (field.default !== undefined) {
+                state.values[field.id] = field.default;
+            } else {
+                state.values[field.id] = "";
+            }
+        });
+
+        canvas.width = template.canvas.width;
+        canvas.height = template.canvas.height;
 
         templateSelection.classList.add("hidden");
         editor.classList.remove("hidden");
 
-        templateTitle.textContent = currentTemplate.name;
+        templateTitle.textContent = template.name;
 
-        createForm();
-
-        setupCanvas();
-
-        drawTemplate();
+        renderForm();
+        await loadTemplateAssets();
+        render();
 
     } catch (error) {
-
         console.error(error);
 
         alert("Šablonu se nepodařilo načíst.");
-
     }
 }
 
 
-// --------------------------------------------------
-// VYTVOŘENÍ FORMULÁŘE PODLE TEMPLATE.JSON
-// --------------------------------------------------
+/* =========================================================
+   FORM
+========================================================= */
 
-function createForm() {
-
+function renderForm() {
     formContainer.innerHTML = "";
 
-    currentTemplate.fields.forEach(field => {
-
+    state.currentTemplate.fields.forEach(field => {
         const wrapper = document.createElement("div");
 
         wrapper.className = "form-field";
+        wrapper.dataset.fieldId = field.id;
 
         const label = document.createElement("label");
-
         label.textContent = field.label;
 
         wrapper.appendChild(label);
 
-
         let input;
 
-
-        // TEXT
-        if (field.type === "text") {
-
-            input = document.createElement("input");
-
-            input.type = "text";
-
-        }
-
-
-        // TEXTAREA
-        else if (field.type === "textarea") {
-
+        if (field.type === "textarea") {
             input = document.createElement("textarea");
 
-        }
+            if (field.placeholder) {
+                input.placeholder = field.placeholder;
+            }
 
-
-        // OBRÁZEK
-        else if (field.type === "image") {
-
+        } else if (field.type === "text") {
             input = document.createElement("input");
+            input.type = "text";
 
-            input.type = "file";
-            input.accept = "image/*";
-
-        }
-
-
-        // SELECT
-        else if (field.type === "select") {
-
+        } else if (field.type === "select") {
             input = document.createElement("select");
 
             field.options.forEach(option => {
-
-                const optionElement =
-                    document.createElement("option");
+                const optionElement = document.createElement("option");
 
                 optionElement.value = option.value;
                 optionElement.textContent = option.label;
 
                 input.appendChild(optionElement);
-
             });
 
-        }
+        } else if (field.type === "image") {
+            input = document.createElement("input");
+            input.type = "file";
+            input.accept = field.accept || "image/*";
 
+        } else {
+            console.warn(
+                `Neznámý typ pole: ${field.type}`
+            );
 
-        if (!input) {
             return;
         }
 
+        if (field.type !== "image") {
+            input.value = state.values[field.id] || "";
+        }
 
-        input.dataset.fieldId = field.id;
+        input.addEventListener("input", () => {
+            state.values[field.id] = input.value;
 
-        input.addEventListener("input", handleFieldChange);
-        input.addEventListener("change", handleFieldChange);
+            updateFieldVisibility();
+            updateDownloadState();
+            render();
+        });
+
+        input.addEventListener("change", () => {
+            if (field.type === "image") {
+                handleImageInput(field, input);
+            } else {
+                state.values[field.id] = input.value;
+            }
+
+            updateFieldVisibility();
+            updateDownloadState();
+            render();
+        });
 
         wrapper.appendChild(input);
 
         formContainer.appendChild(wrapper);
+    });
 
+    updateFieldVisibility();
+    updateDownloadState();
+}
+
+
+/* =========================================================
+   FIELD VISIBILITY
+========================================================= */
+
+function updateFieldVisibility() {
+    state.currentTemplate.fields.forEach(field => {
+        const wrapper = formContainer.querySelector(
+            `[data-field-id="${field.id}"]`
+        );
+
+        if (!wrapper) {
+            return;
+        }
+
+        const visible = evaluateCondition(field.visibleWhen);
+
+        wrapper.style.display = visible ? "" : "none";
     });
 }
 
 
-// --------------------------------------------------
-// ZMĚNA FORMULÁŘE
-// --------------------------------------------------
+/* =========================================================
+   CONDITIONS
+========================================================= */
 
-function handleFieldChange(event) {
-
-    const fieldId = event.target.dataset.fieldId;
-
-    if (event.target.type === "file") {
-
-        const file = event.target.files[0];
-
-        if (!file) {
-            currentImage = null;
-            drawTemplate();
-            return;
-        }
-
-        const image = new Image();
-
-        image.onload = function () {
-
-            currentImage = image;
-
-            drawTemplate();
-
-        };
-
-        image.src = URL.createObjectURL(file);
-
-    } else {
-
-        drawTemplate();
-
+function evaluateCondition(condition) {
+    if (!condition) {
+        return true;
     }
 
-}
+    const actualValue = state.values[condition.field];
 
-
-// --------------------------------------------------
-// ZÍSKÁNÍ HODNOT FORMULÁŘE
-// --------------------------------------------------
-
-function getFieldValue(id) {
-
-    const element =
-        document.querySelector(`[data-field-id="${id}"]`);
-
-    if (!element) {
-        return "";
+    if (condition.equals !== undefined) {
+        return actualValue === condition.equals;
     }
 
-    return element.value;
-
+    return true;
 }
 
 
-// --------------------------------------------------
-// CANVAS
-// --------------------------------------------------
+/* =========================================================
+   IMAGE INPUT
+========================================================= */
 
-function setupCanvas() {
+function handleImageInput(field, input) {
+    const file = input.files[0];
 
-    canvas.width = currentTemplate.width;
-    canvas.height = currentTemplate.height;
+    if (!file) {
+        delete state.images[field.id];
+        return;
+    }
 
+    const image = new Image();
+
+    image.onload = () => {
+        state.images[field.id] = image;
+
+        updateDownloadState();
+        render();
+    };
+
+    image.src = URL.createObjectURL(file);
 }
 
 
-// --------------------------------------------------
-// VYKRESLENÍ ŠABLONY
-// --------------------------------------------------
+/* =========================================================
+   TEMPLATE ASSETS
+========================================================= */
 
-function drawTemplate() {
+async function loadTemplateAssets() {
+    const template = state.currentTemplate;
 
-    if (!currentTemplate) {
+    if (!template.background?.default) {
+        return;
+    }
+
+    const defaultSource = template.background.default;
+
+    if (defaultSource.type !== "asset") {
+        return;
+    }
+
+    const image = new Image();
+
+    image.onload = () => {
+        state.assets.defaultBackground = image;
+
+        render();
+    };
+
+    image.onerror = () => {
+        console.error(
+            `Nepodařilo se načíst ${defaultSource.src}`
+        );
+    };
+
+    image.src =
+        `templates/${encodeURIComponent(template.id)}/${defaultSource.src}`;
+}
+
+
+/* =========================================================
+   RENDER
+========================================================= */
+
+function render() {
+    const template = state.currentTemplate;
+
+    if (!template) {
         return;
     }
 
@@ -295,98 +333,373 @@ function drawTemplate() {
         canvas.height
     );
 
+    drawCanvasBackground(template);
 
-    // POST 1
-    if (currentTemplate.id === "post-1") {
-
-        drawPost1();
-
-    }
-
+    drawElements(template);
 }
 
 
-// --------------------------------------------------
-// POST 1
-// --------------------------------------------------
+/* =========================================================
+   BACKGROUND
+========================================================= */
 
-function drawPost1() {
+function drawCanvasBackground(template) {
+    const background = template.background;
 
-    const width = 1080;
-    const height = 1350;
+    ctx.fillStyle =
+        template.canvas.background || "#000000";
 
+    ctx.fillRect(
+        0,
+        0,
+        canvas.width,
+        canvas.height
+    );
 
-    // ---------------------------------------------
-    // POZADÍ
-    // ---------------------------------------------
+    let image = null;
 
-    if (currentImage) {
+    if (
+        background.sourceField &&
+        state.images[background.sourceField]
+    ) {
+        image = state.images[background.sourceField];
 
-        drawImageCover(
-            currentImage,
-            0,
-            0,
-            width,
-            height
-        );
+    } else if (
+        background.default?.type === "asset"
+    ) {
+        image = state.assets.defaultBackground;
+    }
 
-    } else {
-
-        // Pokud není nahraná fotografie,
-        // použijeme výchozí obrázek.
-
-        const defaultImage = new Image();
-
-        defaultImage.onload = function () {
-
-            drawImageCover(
-                defaultImage,
-                0,
-                0,
-                width,
-                height
-            );
-
-            drawPost1OverlayAndText();
-
-        };
-
-        defaultImage.src =
-            "templates/post-1/default.jpg";
-
+    if (!image) {
         return;
     }
 
+    drawImageCover(
+        image,
+        0,
+        0,
+        canvas.width,
+        canvas.height,
+        background.grayscale
+    );
 
-    drawPost1OverlayAndText();
+    if (background.overlay) {
+        ctx.fillStyle = hexToRgba(
+            background.overlay.color,
+            background.overlay.opacity
+        );
 
+        ctx.fillRect(
+            0,
+            0,
+            canvas.width,
+            canvas.height
+        );
+    }
 }
 
 
-// --------------------------------------------------
-// OŘÍZNUTÍ OBRÁZKU NA CELÉ PLÁTNO
-// --------------------------------------------------
+/* =========================================================
+   ELEMENTS
+========================================================= */
 
-function drawImageCover(image, x, y, width, height) {
+function drawElements(template) {
+    template.elements.forEach(element => {
+        if (element.type === "text") {
+            drawTextElement(element);
+        }
 
+        else if (element.type === "shape") {
+            drawShapeElement(element);
+        }
+
+        else if (element.type === "image") {
+            drawImageElement(element);
+        }
+
+        else if (element.type === "line") {
+            drawLineElement(element);
+        }
+
+        else {
+            console.warn(
+                `Neznámý element: ${element.type}`
+            );
+        }
+    });
+}
+
+
+/* =========================================================
+   TEXT
+========================================================= */
+
+function drawTextElement(element) {
+    const text = state.values[element.field];
+
+    if (!text) {
+        return;
+    }
+
+    const box = element.box;
+    const font = element.font;
+
+    let fontSize = font.size;
+
+    let lines;
+
+    while (fontSize >= font.minSize) {
+        ctx.font =
+            `${font.weight} ${fontSize}px ${font.family}`;
+
+        lines = wrapText(
+            text,
+            box.width,
+            element.maxLines
+        );
+
+        if (lines.length <= element.maxLines) {
+            break;
+        }
+
+        fontSize -= font.shrinkStep;
+    }
+
+    if (lines.length > element.maxLines) {
+        lines = lines.slice(0, element.maxLines);
+    }
+
+    const lineHeight =
+        fontSize * element.lineHeight;
+
+    const totalHeight =
+        lines.length * lineHeight;
+
+    let startY;
+
+    if (element.verticalAlign === "center") {
+        startY =
+            box.y +
+            (box.height - totalHeight) / 2;
+    } else if (element.verticalAlign === "bottom") {
+        startY =
+            box.y +
+            box.height -
+            totalHeight;
+    } else {
+        startY = box.y;
+    }
+
+    ctx.fillStyle = element.color || "#FFFFFF";
+    ctx.textAlign = element.align || "left";
+    ctx.textBaseline = "top";
+
+    lines.forEach((line, index) => {
+        let x = box.x;
+
+        if (element.align === "center") {
+            x += box.width / 2;
+        }
+
+        if (element.align === "right") {
+            x += box.width;
+        }
+
+        ctx.fillText(
+            line,
+            x,
+            startY + index * lineHeight
+        );
+    });
+}
+
+
+/* =========================================================
+   TEXT WRAPPING
+========================================================= */
+
+function wrapText(text, maxWidth, maxLines) {
+    const paragraphs = String(text).split("\n");
+
+    const lines = [];
+
+    paragraphs.forEach(paragraph => {
+        if (paragraph === "") {
+            lines.push("");
+            return;
+        }
+
+        const words = paragraph.split(/\s+/);
+
+        let currentLine = "";
+
+        words.forEach(word => {
+            if (ctx.measureText(word).width > maxWidth) {
+                if (currentLine) {
+                    lines.push(currentLine);
+                    currentLine = "";
+                }
+
+                splitLongWord(
+                    word,
+                    maxWidth,
+                    lines
+                );
+
+                return;
+            }
+
+            const testLine =
+                currentLine
+                    ? `${currentLine} ${word}`
+                    : word;
+
+            if (
+                ctx.measureText(testLine).width <= maxWidth
+            ) {
+                currentLine = testLine;
+
+            } else {
+                if (currentLine) {
+                    lines.push(currentLine);
+                }
+
+                currentLine = word;
+            }
+        });
+
+        if (currentLine) {
+            lines.push(currentLine);
+        }
+    });
+
+    return lines;
+}
+
+
+function splitLongWord(word, maxWidth, lines) {
+    let current = "";
+
+    for (const character of word) {
+        const test = current + character;
+
+        if (
+            ctx.measureText(test).width <= maxWidth
+        ) {
+            current = test;
+        } else {
+            if (current) {
+                lines.push(current);
+            }
+
+            current = character;
+        }
+    }
+
+    if (current) {
+        lines.push(current);
+    }
+}
+
+
+/* =========================================================
+   SHAPE
+========================================================= */
+
+function drawShapeElement(element) {
+    const x = element.x || 0;
+    const y = element.y || 0;
+    const width = element.width || 0;
+    const height = element.height || 0;
+
+    ctx.fillStyle =
+        element.color || "#FFFFFF";
+
+    ctx.fillRect(
+        x,
+        y,
+        width,
+        height
+    );
+}
+
+
+/* =========================================================
+   IMAGE ELEMENT
+========================================================= */
+
+function drawImageElement(element) {
+    const image = state.images[element.field];
+
+    if (!image) {
+        return;
+    }
+
+    drawImageCover(
+        image,
+        element.x,
+        element.y,
+        element.width,
+        element.height,
+        element.grayscale
+    );
+}
+
+
+/* =========================================================
+   LINE
+========================================================= */
+
+function drawLineElement(element) {
+    ctx.beginPath();
+
+    ctx.moveTo(
+        element.x1,
+        element.y1
+    );
+
+    ctx.lineTo(
+        element.x2,
+        element.y2
+    );
+
+    ctx.strokeStyle =
+        element.color || "#FFFFFF";
+
+    ctx.lineWidth =
+        element.width || 1;
+
+    ctx.stroke();
+}
+
+
+/* =========================================================
+   IMAGE COVER
+========================================================= */
+
+function drawImageCover(
+    image,
+    x,
+    y,
+    width,
+    height,
+    grayscale = false
+) {
     const imageRatio =
         image.width / image.height;
 
-    const canvasRatio =
+    const targetRatio =
         width / height;
-
 
     let sourceWidth;
     let sourceHeight;
     let sourceX;
     let sourceY;
 
-
-    if (imageRatio > canvasRatio) {
-
+    if (imageRatio > targetRatio) {
         sourceHeight = image.height;
         sourceWidth =
-            image.height * canvasRatio;
+            image.height * targetRatio;
 
         sourceX =
             (image.width - sourceWidth) / 2;
@@ -394,25 +707,21 @@ function drawImageCover(image, x, y, width, height) {
         sourceY = 0;
 
     } else {
-
         sourceWidth = image.width;
-
         sourceHeight =
-            image.width / canvasRatio;
+            image.width / targetRatio;
 
         sourceX = 0;
 
         sourceY =
             (image.height - sourceHeight) / 2;
-
     }
-
-
-    // ČERNOBÍLÝ OBRAZ
 
     ctx.save();
 
-    ctx.filter = "grayscale(100%)";
+    if (grayscale) {
+        ctx.filter = "grayscale(100%)";
+    }
 
     ctx.drawImage(
         image,
@@ -427,234 +736,136 @@ function drawImageCover(image, x, y, width, height) {
     );
 
     ctx.restore();
-
 }
 
 
-// --------------------------------------------------
-// POST 1 – OVERLAY + TEXT
-// --------------------------------------------------
+/* =========================================================
+   DOWNLOAD VALIDATION
+========================================================= */
 
-function drawPost1OverlayAndText() {
-
-    const width = 1080;
-    const height = 1350;
-
-
-    // ---------------------------------------------
-    // MODRÝ OVERLAY
-    // ---------------------------------------------
-
-    ctx.fillStyle = "rgba(1, 78, 161, 0.19)";
-
-    ctx.fillRect(
-        0,
-        0,
-        width,
-        height
-    );
-
-
-    // ---------------------------------------------
-    // TEXT
-    // ---------------------------------------------
-
-    const text =
-        getFieldValue("text");
-
-
-    if (!text) {
+function updateDownloadState() {
+    if (!state.currentTemplate) {
+        downloadButton.disabled = true;
         return;
     }
 
+    const valid = validateFields();
 
-    const maxWidth = 648;
-
-    const centerX = width / 2;
-    const centerY = height / 2;
-
-
-    const maxFontSize = 53.8;
-    const minFontSize = 30;
-
-
-    let fontSize = maxFontSize;
-
-    let lines;
-
-
-    while (fontSize >= minFontSize) {
-
-        ctx.font =
-            `800 ${fontSize}px Montserrat, Arial, sans-serif`;
-
-        lines =
-            wrapText(text, maxWidth);
-
-        const lineHeight =
-            fontSize * 1.15;
-
-        const textHeight =
-            lines.length * lineHeight;
-
-
-        if (
-            lines.length <= 5 &&
-            textHeight <= height * 0.8
-        ) {
-
-            break;
-
-        }
-
-
-        fontSize -= 1;
-
-    }
-
-
-    if (lines.length > 5) {
-
-        console.warn(
-            "Text je příliš dlouhý pro POST 1."
-        );
-
-    }
-
-
-    // ---------------------------------------------
-    // VYKRESLENÍ TEXTU
-    // ---------------------------------------------
-
-    ctx.save();
-
-    ctx.fillStyle = "#ffffff";
-
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-
-    ctx.font =
-        `800 ${fontSize}px Montserrat, Arial, sans-serif`;
-
-
-    const lineHeight =
-        fontSize * 1.15;
-
-    const textHeight =
-        lines.length * lineHeight;
-
-    let y =
-        centerY - textHeight / 2 + lineHeight / 2;
-
-
-    lines.forEach(line => {
-
-        ctx.fillText(
-            line,
-            centerX,
-            y
-        );
-
-        y += lineHeight;
-
-    });
-
-
-    ctx.restore();
-
+    downloadButton.disabled = !valid;
 }
 
 
-// --------------------------------------------------
-// ZALAMOVÁNÍ TEXTU
-// --------------------------------------------------
+function validateFields() {
+    const fields =
+        state.currentTemplate.fields;
 
-function wrapText(text, maxWidth) {
-
-    const words =
-        text.trim().split(/\s+/);
-
-    const lines = [];
-
-    let currentLine = "";
-
-
-    words.forEach(word => {
-
-        const testLine =
-            currentLine
-                ? `${currentLine} ${word}`
-                : word;
-
-
-        const width =
-            ctx.measureText(testLine).width;
-
-
+    for (const field of fields) {
         if (
-            width <= maxWidth ||
-            !currentLine
+            field.required &&
+            !state.values[field.id]
         ) {
-
-            currentLine = testLine;
-
-        } else {
-
-            lines.push(currentLine);
-
-            currentLine = word;
-
+            return false;
         }
 
-    });
-
-
-    if (currentLine) {
-        lines.push(currentLine);
+        if (
+            field.requiredWhen &&
+            evaluateCondition(field.requiredWhen)
+        ) {
+            if (!state.images[field.id]) {
+                return false;
+            }
+        }
     }
 
-
-    return lines;
-
+    return true;
 }
 
 
-// --------------------------------------------------
-// STAŽENÍ PNG
-// --------------------------------------------------
+/* =========================================================
+   DOWNLOAD
+========================================================= */
 
-downloadButton.addEventListener("click", () => {
+downloadButton.addEventListener(
+    "click",
+    () => {
+        if (!validateFields()) {
+            return;
+        }
 
-    const link =
-        document.createElement("a");
+        canvas.toBlob(blob => {
+            if (!blob) {
+                return;
+            }
 
-    link.download =
-        `${currentTemplate.id}.png`;
+            const url =
+                URL.createObjectURL(blob);
 
-    link.href =
-        canvas.toDataURL("image/png");
+            const link =
+                document.createElement("a");
 
-    link.click();
+            link.href = url;
+            link.download =
+                `${state.currentTemplate.id}.png`;
 
-});
+            link.click();
 
+            URL.revokeObjectURL(url);
 
-// --------------------------------------------------
-// ZPĚT
-// --------------------------------------------------
-
-backButton.addEventListener("click", () => {
-
-    currentTemplate = null;
-    currentImage = null;
-
-    showTemplateSelection();
-
-});
+        }, "image/png");
+    }
+);
 
 
-// --------------------------------------------------
-// START
-// --------------------------------------------------
+/* =========================================================
+   BACK
+========================================================= */
 
-loadTemplates();
+backButton.addEventListener(
+    "click",
+    () => {
+        state.currentTemplate = null;
+        state.values = {};
+        state.images = {};
+        state.assets = {};
+
+        editor.classList.add("hidden");
+        templateSelection.classList.remove("hidden");
+
+        ctx.clearRect(
+            0,
+            0,
+            canvas.width,
+            canvas.height
+        );
+    }
+);
+
+
+/* =========================================================
+   HELPERS
+========================================================= */
+
+function hexToRgba(hex, opacity) {
+    const clean = hex.replace("#", "");
+
+    const r =
+        parseInt(clean.substring(0, 2), 16);
+
+    const g =
+        parseInt(clean.substring(2, 4), 16);
+
+    const b =
+        parseInt(clean.substring(4, 6), 16);
+
+    return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+}
+
+
+function escapeHtml(value) {
+    return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+}

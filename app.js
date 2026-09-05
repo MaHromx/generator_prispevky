@@ -1,3 +1,4 @@
+```javascript
 const TEMPLATE_INDEX_URL = "templates/index.json";
 
 const state = {
@@ -560,11 +561,6 @@ function createPositionField(field) {
                     item.value === position
             );
 
-        /*
-         * Pokud pozice není v template.json,
-         * tlačítko vůbec nevytvoříme.
-         */
-
         if (!option) {
             return;
         }
@@ -588,6 +584,7 @@ function createPositionField(field) {
 
         if (option.disabled) {
             button.disabled = true;
+
             button.classList.add(
                 "position-disabled"
             );
@@ -917,19 +914,17 @@ async function loadTemplateAssets() {
     /*
      * DEFAULT BACKGROUND
      *
-     * Defaultní obrázek je uložen
-     * přímo ve složce konkrétní šablony.
-     *
-     * Například:
-     *
-     * templates/post-2/default.jpg
-     *
-     * Pokud template.json obsahuje:
+     * Pokud je v template.json:
      *
      * "default": {
      *     "type": "asset",
      *     "src": "default.jpg"
      * }
+     *
+     * a není definovaný assetPath,
+     * obrázek se hledá přímo zde:
+     *
+     * templates/<template-id>/default.jpg
      */
 
     if (
@@ -941,9 +936,14 @@ async function loadTemplateAssets() {
 
         if (
             defaultSource.type ===
-            "asset" &&
+                "asset" &&
             defaultSource.src
         ) {
+            const defaultBasePath =
+                defaultSource.assetPath ||
+                defaultSource.assetFolder ||
+                null;
+
             promises.push(
                 loadAssetImage(
                     defaultSource.src,
@@ -952,8 +952,8 @@ async function loadTemplateAssets() {
                             .defaultBackground =
                             image;
                     },
-                    defaultSource.assetPath ||
-                    defaultSource.assetFolder
+                    defaultBasePath,
+                    "defaultBackground"
                 )
             );
         }
@@ -999,7 +999,8 @@ async function loadTemplateAssets() {
                         },
                         getAssetBasePath(
                             element
-                        )
+                        ),
+                        assetKey
                     )
                 );
             }
@@ -1019,7 +1020,8 @@ async function loadTemplateAssets() {
 function loadAssetImage(
     src,
     onLoad,
-    basePath
+    basePath,
+    debugName
 ) {
     return new Promise(
         resolve => {
@@ -1036,29 +1038,42 @@ function loadAssetImage(
                 return;
             }
 
-            const image =
-                new Image();
-
             const assetUrl =
                 buildAssetPath(
                     src,
                     basePath
                 );
 
+            console.log(
+                `[Asset] Načítám ${debugName || src}:`,
+                assetUrl
+            );
+
+            const image =
+                new Image();
+
             image.onload = () => {
+                console.log(
+                    `[Asset] ÚSPĚŠNĚ načteno ${debugName || src}:`,
+                    assetUrl,
+                    `${image.width}x${image.height}`
+                );
+
                 onLoad(image);
                 resolve();
             };
 
             image.onerror = () => {
                 console.error(
-                    `Nepodařilo se načíst asset:\n${assetUrl}`
+                    `[Asset] CHYBA při načítání ${debugName || src}:`,
+                    assetUrl
                 );
 
                 resolve();
             };
 
-            image.src = assetUrl;
+            image.src =
+                assetUrl;
         }
     );
 }
@@ -1106,16 +1121,15 @@ function buildAssetPath(
     }
 
     /*
-     * Pokud template explicitně
-     * určuje assetPath / assetFolder,
-     * použijeme ho.
+     * Explicitní assetPath / assetFolder.
      *
      * Například:
      *
      * assetPath: "Images/Logo"
      * src: "logo-blue.svg"
      *
-     * => Images/Logo/logo-blue.svg
+     * =>
+     * Images/Logo/logo-blue.svg
      */
 
     if (basePath) {
@@ -1130,12 +1144,15 @@ function buildAssetPath(
     }
 
     /*
-     * Výchozí umístění assetu:
-     * složka konkrétní šablony.
+     * DEFAULTNÍ UMÍSTĚNÍ ASSETU
+     *
+     * Pokud není definovaný
+     * assetPath / assetFolder,
+     * asset patří do složky šablony.
      *
      * Například:
      *
-     * template:
+     * template id:
      * post-2
      *
      * src:
@@ -1144,6 +1161,17 @@ function buildAssetPath(
      * =>
      * templates/post-2/default.jpg
      */
+
+    if (
+        !state.currentTemplate ||
+        !state.currentTemplate.id
+    ) {
+        console.error(
+            "Nelze vytvořit cestu k assetu: není vybraná šablona."
+        );
+
+        return "";
+    }
 
     return new URL(
         `templates/${encodeURIComponent(
@@ -1170,6 +1198,13 @@ function getAssetBasePath(element) {
     ) {
         return element.assetFolder;
     }
+
+    /*
+     * Žádný fallback na Images.
+     *
+     * Asset bez assetPath patří
+     * do složky aktuální šablony.
+     */
 
     return null;
 }
@@ -1244,9 +1279,6 @@ function drawCanvasBackground(
 
     /*
      * Základní barva plátna.
-     *
-     * Použije se pouze tehdy,
-     * pokud je definovaná v canvas.
      */
 
     drawCanvasColor(
@@ -1259,10 +1291,6 @@ function drawCanvasBackground(
 
     /*
      * VLASTNÍ OBRÁZEK
-     *
-     * Vlastní obrázek má přednost,
-     * pokud je backgroundType = custom
-     * a sourceField existuje.
      */
 
     if (
@@ -1282,12 +1310,6 @@ function drawCanvasBackground(
 
     /*
      * DEFAULTNÍ OBRÁZEK
-     *
-     * Použijeme pouze pokud:
-     *
-     * 1. není zvolen custom obrázek
-     * 2. template.json ho skutečně definuje
-     * 3. asset se skutečně načetl
      */
 
     else if (
@@ -1304,9 +1326,8 @@ function drawCanvasBackground(
 
 
     /*
-     * Pokud template nemá žádný
-     * obrázek nebo se ho nepodařilo
-     * načíst, nic dalšího nepřidáváme.
+     * Pokud obrázek není načtený,
+     * nic dalšího nevykreslujeme.
      */
 
     if (!image) {
@@ -1350,8 +1371,10 @@ function drawCanvasBackground(
 
 
     /*
-     * Overlay existuje pouze tehdy,
-     * pokud je definovaný v template.json.
+     * OVERLAY
+     *
+     * Vykreslí se pouze tehdy,
+     * pokud je skutečně definovaný.
      */
 
     if (
@@ -1557,11 +1580,6 @@ function drawGroup(
     const groupConfig =
         template.groups?.[groupId];
 
-    /*
-     * Pokud group není definovaný,
-     * skupina neexistuje.
-     */
-
     if (!groupConfig) {
         console.warn(
             `Group "${groupId}" není definovaný v template.json.`
@@ -1585,11 +1603,6 @@ function drawGroup(
                 );
             }
         );
-
-    /*
-     * Aktuálně group podporuje
-     * textové elementy.
-     */
 
     const layouts = [];
 
@@ -1622,11 +1635,6 @@ function drawGroup(
                 state.values[
                     element.field
                 ];
-
-            /*
-             * Prázdný text se do group
-             * vůbec nezapočítává.
-             */
 
             if (
                 text === undefined ||
@@ -1665,13 +1673,6 @@ function drawGroup(
         return;
     }
 
-    /*
-     * Mezera mezi prvky group.
-     *
-     * Pokud není definovaná,
-     * použije se 0.
-     */
-
     const gap =
         groupConfig.gap !==
         undefined
@@ -1679,15 +1680,6 @@ function drawGroup(
                 groupConfig.gap
             )
             : 0;
-
-    /*
-     * Celková výška skupiny:
-     *
-     * výška prvku 1
-     * + gap
-     * + výška prvku 2
-     * + ...
-     */
 
     const totalHeight =
         layouts.reduce(
@@ -1707,13 +1699,6 @@ function drawGroup(
             layouts.length - 1
         ) *
             gap;
-
-    /*
-     * Oblast group.
-     *
-     * Pokud group.box není definovaný,
-     * použije se celé plátno.
-     */
 
     const groupBox =
         groupConfig.box
@@ -1740,10 +1725,6 @@ function drawGroup(
                 width: canvas.width,
                 height: canvas.height
             };
-
-    /*
-     * Vertikální zarovnání celé group.
-     */
 
     const verticalAlign =
         groupConfig.verticalAlign ??
@@ -1777,11 +1758,6 @@ function drawGroup(
         currentY =
             groupBox.y;
     }
-
-    /*
-     * Vykreslení jednotlivých elementů
-     * pod sebou.
-     */
 
     layouts.forEach(
         (
@@ -1824,17 +1800,6 @@ function drawGroup(
 function resolveElementBox(
     element
 ) {
-    /*
-     * Nový způsob:
-     *
-     * "box": {
-     *     "x": 100,
-     *     "y": 100,
-     *     "width": 500,
-     *     "height": 300
-     * }
-     */
-
     if (element.box) {
         const box = {
             x: element.box.x ?? 0,
@@ -1850,15 +1815,6 @@ function resolveElementBox(
             box
         );
     }
-
-    /*
-     * Kompatibilita se starými šablonami:
-     *
-     * "x": 100,
-     * "y": 100,
-     * "width": 500,
-     * "height": 300
-     */
 
     const box = {
         x: element.x ?? 0,
@@ -1884,26 +1840,12 @@ function applyPosition(
     element,
     box
 ) {
-    /*
-     * Pokud position není definovaná,
-     * původní pozice zůstává.
-     */
-
     if (!element.position) {
         return box;
     }
 
     let fieldId = null;
     let positions = null;
-
-    /*
-     * Varianta:
-     *
-     * "position": {
-     *     "field": "logoPosition",
-     *     "positions": {...}
-     * }
-     */
 
     if (
         typeof element.position ===
@@ -1915,11 +1857,6 @@ function applyPosition(
         positions =
             element.position.positions;
     }
-
-    /*
-     * Pokud není správně definované
-     * mapování, nic neměníme.
-     */
 
     if (
         !fieldId ||
@@ -2494,10 +2431,6 @@ function drawImageElement(
 ) {
     let image = null;
 
-    /*
-     * Uploadované obrázky
-     */
-
     if (
         element.field &&
         state.images[
@@ -2509,10 +2442,6 @@ function drawImageElement(
                 element.field
             ];
     }
-
-    /*
-     * Template asset
-     */
 
     if (
         !image &&
@@ -2681,10 +2610,6 @@ function drawImageElementWithOptions(
         ctx.globalAlpha =
             options.opacity;
     }
-
-    /*
-     * Border radius / clipping
-     */
 
     if (
         options.borderRadius !==
@@ -3143,6 +3068,20 @@ function drawFill(
 ) {
     ctx.save();
 
+    /*
+     * Pokud má fill vlastní opacity,
+     * aplikujeme ji zde.
+     */
+
+    if (
+        fill &&
+        typeof fill === "object" &&
+        fill.opacity !== undefined
+    ) {
+        ctx.globalAlpha =
+            fill.opacity;
+    }
+
     const style =
         createFillStyle(
             fill,
@@ -3408,10 +3347,6 @@ function validateFields() {
     for (
         const field of fields
     ) {
-        /*
-         * Povinné pole musí být viditelné.
-         */
-
         if (
             field.visibleWhen &&
             !evaluateCondition(
@@ -3421,10 +3356,6 @@ function validateFields() {
             continue;
         }
 
-        /*
-         * Běžné required
-         */
-
         if (
             field.required &&
             !hasFieldValue(
@@ -3433,10 +3364,6 @@ function validateFields() {
         ) {
             return false;
         }
-
-        /*
-         * requiredWhen
-         */
 
         if (
             field.requiredWhen &&
@@ -3663,3 +3590,4 @@ function escapeHtml(
             "&#039;"
         );
 }
+```

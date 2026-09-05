@@ -564,6 +564,7 @@ function createPositionField(field) {
          * Pokud pozice není v template.json,
          * tlačítko vůbec nevytvoříme.
          */
+
         if (!option) {
             return;
         }
@@ -1273,7 +1274,15 @@ function drawElements(template) {
     /*
      * Pořadí v template.json
      * = pořadí vrstev.
+     *
+     * Group:
+     * Pokud je element součástí group,
+     * celá skupina se vykreslí při prvním
+     * výskytu dané skupiny.
      */
+
+    const renderedGroups =
+        new Set();
 
     template.elements.forEach(
         element => {
@@ -1293,58 +1302,380 @@ function drawElements(template) {
                 return;
             }
 
+
+            /* GROUP */
+
+            if (element.group) {
+                const groupId =
+                    typeof element.group === "string"
+                        ? element.group
+                        : element.group.id;
+
+                if (!groupId) {
+                    drawElement(
+                        element
+                    );
+
+                    return;
+                }
+
+                if (
+                    renderedGroups.has(
+                        groupId
+                    )
+                ) {
+                    return;
+                }
+
+                renderedGroups.add(
+                    groupId
+                );
+
+                drawGroup(
+                    template,
+                    groupId
+                );
+
+                return;
+            }
+
+
+            /* BĚŽNÝ ELEMENT */
+
+            drawElement(
+                element
+            );
+        }
+    );
+}
+
+
+/* =========================================================
+   SINGLE ELEMENT
+========================================================= */
+
+function drawElement(element) {
+    if (
+        element.type === "text"
+    ) {
+        drawTextElement(
+            element
+        );
+    }
+
+    else if (
+        element.type === "shape"
+    ) {
+        drawShapeElement(
+            element
+        );
+    }
+
+    else if (
+        element.type === "image"
+    ) {
+        drawImageElement(
+            element
+        );
+    }
+
+    else if (
+        element.type === "logo"
+    ) {
+        drawLogoElement(
+            element
+        );
+    }
+
+    else if (
+        element.type === "icon"
+    ) {
+        drawIconElement(
+            element
+        );
+    }
+
+    else if (
+        element.type === "line"
+    ) {
+        drawLineElement(
+            element
+        );
+    }
+
+    else {
+        console.warn(
+            `Neznámý element: ${element.type}`
+        );
+    }
+}
+
+
+/* =========================================================
+   GROUP
+========================================================= */
+
+function drawGroup(
+    template,
+    groupId
+) {
+    const groupConfig =
+        template.groups?.[groupId];
+
+    /*
+     * Pokud group není definovaný,
+     * skupina neexistuje.
+     */
+
+    if (!groupConfig) {
+        console.warn(
+            `Group "${groupId}" není definovaný v template.json.`
+        );
+
+        return;
+    }
+
+    const groupElements =
+        template.elements.filter(
+            element => {
+
+                const elementGroup =
+                    typeof element.group === "string"
+                        ? element.group
+                        : element.group?.id;
+
+                return (
+                    elementGroup ===
+                    groupId
+                );
+            }
+        );
+
+    /*
+     * Aktuálně group podporuje
+     * textové elementy.
+     */
+
+    const layouts = [];
+
+    groupElements.forEach(
+        element => {
+
             if (
-                element.type === "text"
+                element.type !==
+                "text"
             ) {
-                drawTextElement(
-                    element
-                );
+                return;
             }
 
-            else if (
-                element.type === "shape"
+            if (
+                element.hidden === true
             ) {
-                drawShapeElement(
-                    element
-                );
+                return;
             }
 
-            else if (
-                element.type === "image"
+            if (
+                element.visibleWhen &&
+                !evaluateCondition(
+                    element.visibleWhen
+                )
             ) {
-                drawImageElement(
-                    element
-                );
+                return;
             }
 
-            else if (
-                element.type === "logo"
+            const text =
+                state.values[
+                    element.field
+                ];
+
+            /*
+             * Prázdný text se do group
+             * vůbec nezapočítává.
+             */
+
+            if (
+                text === undefined ||
+                text === null ||
+                text === ""
             ) {
-                drawLogoElement(
-                    element
-                );
+                return;
             }
 
-            else if (
-                element.type === "icon"
-            ) {
-                drawIconElement(
+            const box =
+                resolveElementBox(
                     element
                 );
+
+            const layout =
+                prepareTextLayout(
+                    element,
+                    box
+                );
+
+            if (!layout) {
+                return;
             }
 
-            else if (
-                element.type === "line"
+            layouts.push({
+                element,
+                box,
+                layout
+            });
+        }
+    );
+
+    if (
+        layouts.length === 0
+    ) {
+        return;
+    }
+
+    /*
+     * Mezera mezi prvky group.
+     *
+     * Pokud není definovaná,
+     * použije se 0.
+     */
+
+    const gap =
+        groupConfig.gap !==
+        undefined
+            ? Number(
+                groupConfig.gap
+            )
+            : 0;
+
+    /*
+     * Celková výška skupiny:
+     *
+     * výška prvku 1
+     * + gap
+     * + výška prvku 2
+     * + ...
+     */
+
+    const totalHeight =
+        layouts.reduce(
+            (
+                total,
+                item
+            ) => {
+                return (
+                    total +
+                    item.layout.totalHeight
+                );
+            },
+            0
+        ) +
+        Math.max(
+            0,
+            layouts.length - 1
+        ) *
+            gap;
+
+    /*
+     * Oblast group.
+     *
+     * Pokud group.box není definovaný,
+     * použije se celé plátno.
+     */
+
+    const groupBox =
+        groupConfig.box
+            ? {
+                x:
+                    groupConfig.box.x ??
+                    0,
+
+                y:
+                    groupConfig.box.y ??
+                    0,
+
+                width:
+                    groupConfig.box.width ??
+                    canvas.width,
+
+                height:
+                    groupConfig.box.height ??
+                    canvas.height
+            }
+            : {
+                x: 0,
+                y: 0,
+                width: canvas.width,
+                height: canvas.height
+            };
+
+    /*
+     * Vertikální zarovnání celé group.
+     */
+
+    const verticalAlign =
+        groupConfig.verticalAlign ??
+        "top";
+
+    let currentY;
+
+    if (
+        verticalAlign ===
+        "center"
+    ) {
+        currentY =
+            groupBox.y +
+            (
+                groupBox.height -
+                totalHeight
+            ) / 2;
+    }
+
+    else if (
+        verticalAlign ===
+        "bottom"
+    ) {
+        currentY =
+            groupBox.y +
+            groupBox.height -
+            totalHeight;
+    }
+
+    else {
+        currentY =
+            groupBox.y;
+    }
+
+    /*
+     * Vykreslení jednotlivých elementů
+     * pod sebou.
+     */
+
+    layouts.forEach(
+        (
+            item,
+            index
+        ) => {
+
+            const drawBox = {
+                x: item.box.x,
+                y: currentY,
+                width: item.box.width,
+                height:
+                    item.layout.totalHeight
+            };
+
+            drawPreparedTextElement(
+                item.element,
+                drawBox,
+                item.layout
+            );
+
+            currentY +=
+                item.layout.totalHeight;
+
+            if (
+                index <
+                layouts.length - 1
             ) {
-                drawLineElement(
-                    element
-                );
-            }
-
-            else {
-                console.warn(
-                    `Neznámý element: ${element.type}`
-                );
+                currentY += gap;
             }
         }
     );
@@ -1524,6 +1855,79 @@ function drawTextElement(
             element
         );
 
+    const layout =
+        prepareTextLayout(
+            element,
+            box
+        );
+
+    if (!layout) {
+        return;
+    }
+
+    let startY;
+
+    const verticalAlign =
+        element.verticalAlign ??
+        GLOBAL_DEFAULTS.textVerticalAlign;
+
+    if (
+        verticalAlign ===
+        "center"
+    ) {
+        startY =
+            box.y +
+            (
+                box.height -
+                layout.totalHeight
+            ) / 2;
+    }
+
+    else if (
+        verticalAlign ===
+        "bottom"
+    ) {
+        startY =
+            box.y +
+            box.height -
+            layout.totalHeight;
+    }
+
+    else {
+        startY =
+            box.y;
+    }
+
+    drawPreparedTextElement(
+        element,
+        {
+            ...box,
+            y: startY
+        },
+        layout
+    );
+}
+
+
+/* =========================================================
+   TEXT LAYOUT
+========================================================= */
+
+function prepareTextLayout(
+    element,
+    box
+) {
+    const text =
+        state.values[element.field];
+
+    if (
+        text === undefined ||
+        text === null ||
+        text === ""
+    ) {
+        return null;
+    }
+
     const font =
         element.font || {};
 
@@ -1538,7 +1942,7 @@ function drawTextElement(
             element
         );
 
-        return;
+        return null;
     }
 
     const minSize =
@@ -1626,40 +2030,36 @@ function drawTextElement(
         lines.length *
         lineHeight;
 
-    let startY;
+    return {
+        lines,
+        fontSize,
+        lineHeight,
+        totalHeight,
+        fontFamily,
+        fontWeight,
+        fontStyle
+    };
+}
 
-    const verticalAlign =
-        element.verticalAlign ??
-        GLOBAL_DEFAULTS.textVerticalAlign;
 
-    if (
-        verticalAlign ===
-        "center"
-    ) {
-        startY =
-            box.y +
-            (
-                box.height -
-                totalHeight
-            ) / 2;
-    }
+/* =========================================================
+   PREPARED TEXT DRAWING
+========================================================= */
 
-    else if (
-        verticalAlign ===
-        "bottom"
-    ) {
-        startY =
-            box.y +
-            box.height -
-            totalHeight;
-    }
-
-    else {
-        startY =
-            box.y;
-    }
-
+function drawPreparedTextElement(
+    element,
+    box,
+    layout
+) {
     ctx.save();
+
+    ctx.font =
+        buildFont(
+            layout.fontStyle,
+            layout.fontWeight,
+            layout.fontSize,
+            layout.fontFamily
+        );
 
     if (
         element.opacity !==
@@ -1680,7 +2080,7 @@ function drawTextElement(
     ctx.textBaseline =
         "top";
 
-    lines.forEach(
+    layout.lines.forEach(
         (line, index) => {
             let x =
                 box.x;
@@ -1704,9 +2104,9 @@ function drawTextElement(
             ctx.fillText(
                 line,
                 x,
-                startY +
+                box.y +
                     index *
-                    lineHeight
+                    layout.lineHeight
             );
         }
     );
@@ -2589,7 +2989,6 @@ function drawRoundedPath(
         y,
         x + r,
         y
-
     );
 
     ctx.closePath();
@@ -2813,7 +3212,10 @@ function addGradientColors(
     }
 
     colors.forEach(
-        (color, index) => {
+        (
+            color,
+            index
+        ) => {
             gradient.addColorStop(
                 index /
                     (colors.length - 1),

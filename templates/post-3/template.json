@@ -39,7 +39,7 @@
         {
             "id": "logoVisible",
             "type": "checkbox",
-            "label": "Zobrazit logo?",
+            "label": "Zobrazit logo",
             "default": true
         },
         {
@@ -85,7 +85,7 @@
         {
             "id": "logoOnContent",
             "type": "checkbox",
-            "label": "Zobrazit logo i na dalších stranách?",
+            "label": "Zobrazit logo i na dalších stranách",
             "default": false,
             "visibleWhen": {
                 "field": "logoVisible",
@@ -266,15 +266,15 @@
                         "positions": {
                             "bottom-left": {
                                 "x": 8,
-                                "y": 1173
+                                "y": 1111
                             },
                             "bottom-center": {
                                 "x": 461,
-                                "y": 1173
+                                "y": 1111
                             },
                             "bottom-right": {
                                 "x": 914,
-                                "y": 1173
+                                "y": 1111
                             }
                         }
                     }

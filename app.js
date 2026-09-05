@@ -3589,4 +3589,3 @@ function escapeHtml(
             "&#039;"
         );
 }
-```

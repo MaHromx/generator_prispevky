@@ -917,9 +917,19 @@ async function loadTemplateAssets() {
     /*
      * DEFAULT BACKGROUND
      *
-     * Načítáme pouze tehdy, pokud je
-     * background.default skutečně
-     * definovaný v template.json.
+     * Defaultní obrázek je uložen
+     * přímo ve složce konkrétní šablony.
+     *
+     * Například:
+     *
+     * templates/post-2/default.jpg
+     *
+     * Pokud template.json obsahuje:
+     *
+     * "default": {
+     *     "type": "asset",
+     *     "src": "default.jpg"
+     * }
      */
 
     if (
@@ -1029,30 +1039,26 @@ function loadAssetImage(
             const image =
                 new Image();
 
+            const assetUrl =
+                buildAssetPath(
+                    src,
+                    basePath
+                );
+
             image.onload = () => {
                 onLoad(image);
                 resolve();
             };
 
             image.onerror = () => {
-                const assetUrl =
-                    buildAssetPath(
-                        src,
-                        basePath
-                    );
-
                 console.error(
-                    `Nepodařilo se načíst asset.\nZdroj: ${src}\nVýsledná URL: ${assetUrl}`
+                    `Nepodařilo se načíst asset:\n${assetUrl}`
                 );
 
                 resolve();
             };
 
-            image.src =
-                buildAssetPath(
-                    src,
-                    basePath
-                );
+            image.src = assetUrl;
         }
     );
 }
@@ -1100,25 +1106,16 @@ function buildAssetPath(
     }
 
     /*
-     * Centrální složka Images
+     * Pokud template explicitně
+     * určuje assetPath / assetFolder,
+     * použijeme ho.
      *
-     * Např.:
-     * Images/default.jpg
-     * Images/Logo/logo-blue.svg
-     */
-
-    if (
-        cleanSrc.startsWith("Images/")
-    ) {
-        return new URL(
-            cleanSrc,
-            document.baseURI
-        ).href;
-    }
-
-    /*
-     * Pokud template explicitně určuje
-     * assetPath / assetFolder.
+     * Například:
+     *
+     * assetPath: "Images/Logo"
+     * src: "logo-blue.svg"
+     *
+     * => Images/Logo/logo-blue.svg
      */
 
     if (basePath) {
@@ -1135,6 +1132,17 @@ function buildAssetPath(
     /*
      * Výchozí umístění assetu:
      * složka konkrétní šablony.
+     *
+     * Například:
+     *
+     * template:
+     * post-2
+     *
+     * src:
+     * default.jpg
+     *
+     * =>
+     * templates/post-2/default.jpg
      */
 
     return new URL(
@@ -1163,7 +1171,7 @@ function getAssetBasePath(element) {
         return element.assetFolder;
     }
 
-    return "Images";
+    return null;
 }
 
 
@@ -1275,7 +1283,7 @@ function drawCanvasBackground(
     /*
      * DEFAULTNÍ OBRÁZEK
      *
-     * Default použijeme pouze pokud:
+     * Použijeme pouze pokud:
      *
      * 1. není zvolen custom obrázek
      * 2. template.json ho skutečně definuje
@@ -2503,7 +2511,7 @@ function drawImageElement(
     }
 
     /*
-     * Centrální / template asset
+     * Template asset
      */
 
     if (

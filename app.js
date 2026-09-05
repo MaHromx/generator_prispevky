@@ -1,4 +1,3 @@
-```javascript
 const TEMPLATE_INDEX_URL = "templates/index.json";
 
 const state = {

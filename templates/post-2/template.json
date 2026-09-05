@@ -111,14 +111,12 @@
             "type": "text",
             "field": "text",
             "group": "mainText",
-
             "box": {
                 "x": 116,
                 "y": 0,
                 "width": 848,
                 "height": 1350
             },
-
             "font": {
                 "family": "Montserrat",
                 "weight": 800,
@@ -126,7 +124,6 @@
                 "minSize": 30,
                 "shrinkStep": 1
             },
-
             "color": "#FFFFFF",
             "align": "center",
             "lineHeight": 1.15,
@@ -140,14 +137,12 @@
             "type": "text",
             "field": "subtitle",
             "group": "mainText",
-
             "box": {
                 "x": 116,
                 "y": 0,
                 "width": 848,
                 "height": 1350
             },
-
             "font": {
                 "family": "Montserrat",
                 "weight": 500,
@@ -155,7 +150,6 @@
                 "minSize": 30,
                 "shrinkStep": 1
             },
-
             "color": "#FFFFFF",
             "align": "center",
             "lineHeight": 1.15,
@@ -202,4 +196,3 @@
         }
     ]
 }
-```

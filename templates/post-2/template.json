@@ -185,17 +185,17 @@
                 "positions": {
                     "bottom-left": {
                         "x": 37,
-                        "y": 1229
+                        "y": 1111
                     },
 
                     "bottom-center": {
                         "x": 461,
-                        "y": 1229
+                        "y": 1111
                     },
 
                     "bottom-right": {
                         "x": 885,
-                        "y": 1229
+                        "y": 1111
                     }
                 }
             }

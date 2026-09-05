@@ -5,7 +5,13 @@ const state = {
     currentTemplate: null,
     values: {},
     images: {},
-    assets: {}
+    assets: {},
+
+    /* POST 3 */
+    pages: [],
+    currentPage: 0,
+    richTextHistory: {},
+    richTextHistoryIndex: {}
 };
 
 const templateList = document.getElementById("template-list");
@@ -119,6 +125,10 @@ async function openTemplate(templateId) {
         state.values = {};
         state.images = {};
         state.assets = {};
+        state.pages = [];
+        state.currentPage = 0;
+        state.richTextHistory = {};
+        state.richTextHistoryIndex = {};
 
         initializeFieldValues(template);
 
@@ -141,6 +151,20 @@ async function openTemplate(templateId) {
 
         alert("Šablonu se nepodařilo načíst.");
     }
+}
+
+
+/* =========================================================
+   TEMPLATE TYPE
+========================================================= */
+
+function isPost3Template(template = state.currentTemplate) {
+    return Boolean(
+        template &&
+        template.pages &&
+        template.pages.first &&
+        template.pages.content
+    );
 }
 
 
@@ -170,6 +194,11 @@ function initializeFieldValues(template) {
             return;
         }
 
+        if (field.type === "richtext") {
+            state.values[field.id] = [];
+            return;
+        }
+
         state.values[field.id] = "";
     });
 }
@@ -195,7 +224,7 @@ function renderForm() {
 
         const label = document.createElement("label");
 
-        if (field.type !== "checkbox") {
+        if (field.type !== "checkbox" && field.type !== "richtext") {
             label.textContent = field.label || field.id;
             wrapper.appendChild(label);
         }
@@ -445,6 +474,13 @@ function createFieldInput(field) {
     }
 
 
+    /* RICH TEXT */
+
+    else if (field.type === "richtext") {
+        return createRichTextField(field);
+    }
+
+
     else {
         return null;
     }
@@ -484,6 +520,596 @@ function createFieldInput(field) {
 
 
     return input;
+}
+
+
+/* =========================================================
+   RICH TEXT EDITOR
+========================================================= */
+
+function createRichTextField(field) {
+    const wrapper =
+        document.createElement("div");
+
+    wrapper.className =
+        "richtext-editor";
+
+    const toolbar =
+        document.createElement("div");
+
+    toolbar.className =
+        "richtext-toolbar";
+
+    const editorElement =
+        document.createElement("div");
+
+    editorElement.className =
+        "richtext-content";
+
+    editorElement.contentEditable =
+        "true";
+
+    editorElement.spellcheck =
+        true;
+
+    if (field.placeholder) {
+        editorElement.dataset.placeholder =
+            field.placeholder;
+    }
+
+    const buttons = [];
+
+    if (
+        field.formatting?.bold !== false
+    ) {
+        const boldButton =
+            createRichTextButton(
+                "B",
+                "Tučně",
+                () => {
+                    focusRichTextEditor(
+                        editorElement
+                    );
+
+                    document.execCommand(
+                        "bold",
+                        false,
+                        null
+                    );
+
+                    saveRichTextEditorState(
+                        field,
+                        editorElement
+                    );
+
+                    render();
+                }
+            );
+
+        boldButton.classList.add(
+            "richtext-bold"
+        );
+
+        buttons.push(
+            boldButton
+        );
+    }
+
+    if (
+        field.formatting?.italic !== false
+    ) {
+        const italicButton =
+            createRichTextButton(
+                "I",
+                "Kurzíva",
+                () => {
+                    focusRichTextEditor(
+                        editorElement
+                    );
+
+                    document.execCommand(
+                        "italic",
+                        false,
+                        null
+                    );
+
+                    saveRichTextEditorState(
+                        field,
+                        editorElement
+                    );
+
+                    render();
+                }
+            );
+
+        italicButton.classList.add(
+            "richtext-italic"
+        );
+
+        buttons.push(
+            italicButton
+        );
+    }
+
+    if (
+        field.formatting?.undo !== false
+    ) {
+        buttons.push(
+            createRichTextButton(
+                "↶",
+                "Zpět",
+                () => {
+                    focusRichTextEditor(
+                        editorElement
+                    );
+
+                    document.execCommand(
+                        "undo",
+                        false,
+                        null
+                    );
+
+                    saveRichTextEditorState(
+                        field,
+                        editorElement
+                    );
+
+                    render();
+                }
+            )
+        );
+    }
+
+    if (
+        field.formatting?.redo !== false
+    ) {
+        buttons.push(
+            createRichTextButton(
+                "↷",
+                "Znovu",
+                () => {
+                    focusRichTextEditor(
+                        editorElement
+                    );
+
+                    document.execCommand(
+                        "redo",
+                        false,
+                        null
+                    );
+
+                    saveRichTextEditorState(
+                        field,
+                        editorElement
+                    );
+
+                    render();
+                }
+            )
+        );
+    }
+
+    buttons.forEach(
+        button =>
+            toolbar.appendChild(
+                button
+            )
+    );
+
+    wrapper.appendChild(
+        toolbar
+    );
+
+    wrapper.appendChild(
+        editorElement
+    );
+
+    const segments =
+        Array.isArray(
+            state.values[field.id]
+        )
+            ? state.values[field.id]
+            : [];
+
+    renderSegmentsIntoRichTextEditor(
+        editorElement,
+        segments
+    );
+
+    setupRichTextKeyboard(
+        field,
+        editorElement
+    );
+
+    return wrapper;
+}
+
+
+function createRichTextButton(
+    text,
+    title,
+    handler
+) {
+    const button =
+        document.createElement("button");
+
+    button.type =
+        "button";
+
+    button.textContent =
+        text;
+
+    button.title =
+        title;
+
+    button.className =
+        "richtext-button";
+
+    button.addEventListener(
+        "mousedown",
+        event => {
+            event.preventDefault();
+        }
+    );
+
+    button.addEventListener(
+        "click",
+        handler
+    );
+
+    return button;
+}
+
+
+function focusRichTextEditor(editorElement) {
+    editorElement.focus();
+}
+
+
+function setupRichTextKeyboard(
+    field,
+    editorElement
+) {
+    editorElement.addEventListener(
+        "keydown",
+        event => {
+
+            if (
+                (event.ctrlKey ||
+                    event.metaKey) &&
+                event.key.toLowerCase() === "b"
+            ) {
+                event.preventDefault();
+
+                document.execCommand(
+                    "bold",
+                    false,
+                    null
+                );
+
+                saveRichTextEditorState(
+                    field,
+                    editorElement
+                );
+
+                render();
+
+                return;
+            }
+
+            if (
+                (event.ctrlKey ||
+                    event.metaKey) &&
+                event.key.toLowerCase() === "i"
+            ) {
+                event.preventDefault();
+
+                document.execCommand(
+                    "italic",
+                    false,
+                    null
+                );
+
+                saveRichTextEditorState(
+                    field,
+                    editorElement
+                );
+
+                render();
+            }
+        }
+    );
+
+    editorElement.addEventListener(
+        "input",
+        () => {
+            saveRichTextEditorState(
+                field,
+                editorElement
+            );
+
+            updateDownloadState();
+            render();
+        }
+    );
+
+    editorElement.addEventListener(
+        "paste",
+        event => {
+            event.preventDefault();
+
+            const text =
+                event.clipboardData
+                    ?.getData("text/plain") || "";
+
+            document.execCommand(
+                "insertText",
+                false,
+                text
+            );
+
+            saveRichTextEditorState(
+                field,
+                editorElement
+            );
+
+            updateDownloadState();
+            render();
+        }
+    );
+}
+
+
+function saveRichTextEditorState(
+    field,
+    editorElement
+) {
+    state.values[field.id] =
+        richTextDomToSegments(
+            editorElement
+        );
+}
+
+
+function richTextDomToSegments(
+    editorElement
+) {
+    const segments = [];
+
+    function addSegment(
+        text,
+        bold,
+        italic
+    ) {
+        if (!text) {
+            return;
+        }
+
+        const previous =
+            segments[
+                segments.length - 1
+            ];
+
+        if (
+            previous &&
+            previous.bold === bold &&
+            previous.italic === italic
+        ) {
+            previous.text += text;
+            return;
+        }
+
+        segments.push({
+            text,
+            bold,
+            italic
+        });
+    }
+
+    function walk(
+        node,
+        bold = false,
+        italic = false
+    ) {
+        if (
+            node.nodeType ===
+            Node.TEXT_NODE
+        ) {
+            addSegment(
+                node.nodeValue,
+                bold,
+                italic
+            );
+
+            return;
+        }
+
+        if (
+            node.nodeType !==
+            Node.ELEMENT_NODE
+        ) {
+            return;
+        }
+
+        const tag =
+            node.tagName.toLowerCase();
+
+        if (
+            tag === "br"
+        ) {
+            addSegment(
+                "\n",
+                bold,
+                italic
+            );
+
+            return;
+        }
+
+        const nextBold =
+            bold ||
+            tag === "b" ||
+            tag === "strong";
+
+        const nextItalic =
+            italic ||
+            tag === "i" ||
+            tag === "em";
+
+        Array.from(
+            node.childNodes
+        ).forEach(
+            child =>
+                walk(
+                    child,
+                    nextBold,
+                    nextItalic
+                )
+        );
+
+        if (
+            tag === "div" ||
+            tag === "p"
+        ) {
+            addSegment(
+                "\n",
+                bold,
+                italic
+            );
+        }
+    }
+
+    Array.from(
+        editorElement.childNodes
+    ).forEach(
+        node =>
+            walk(node)
+    );
+
+    return normalizeRichTextSegments(
+        segments
+    );
+}
+
+
+function normalizeRichTextSegments(
+    segments
+) {
+    if (!Array.isArray(segments)) {
+        return [];
+    }
+
+    const result = [];
+
+    segments.forEach(
+        segment => {
+            if (
+                !segment ||
+                typeof segment.text !==
+                    "string"
+            ) {
+                return;
+            }
+
+            const normalized = {
+                text: segment.text,
+                bold: Boolean(
+                    segment.bold
+                ),
+                italic: Boolean(
+                    segment.italic
+                )
+            };
+
+            const previous =
+                result[
+                    result.length - 1
+                ];
+
+            if (
+                previous &&
+                previous.bold ===
+                    normalized.bold &&
+                previous.italic ===
+                    normalized.italic
+            ) {
+                previous.text +=
+                    normalized.text;
+            } else {
+                result.push(
+                    normalized
+                );
+            }
+        }
+    );
+
+    return result;
+}
+
+
+function renderSegmentsIntoRichTextEditor(
+    editorElement,
+    segments
+) {
+    editorElement.innerHTML = "";
+
+    if (
+        !Array.isArray(segments) ||
+        segments.length === 0
+    ) {
+        return;
+    }
+
+    segments.forEach(
+        segment => {
+            const parts =
+                String(
+                    segment.text || ""
+                ).split("\n");
+
+            parts.forEach(
+                (
+                    part,
+                    index
+                ) => {
+                    if (part) {
+                        const span =
+                            document.createElement(
+                                "span"
+                            );
+
+                        span.textContent =
+                            part;
+
+                        span.style.fontWeight =
+                            segment.bold
+                                ? "700"
+                                : "400";
+
+                        span.style.fontStyle =
+                            segment.italic
+                                ? "italic"
+                                : "normal";
+
+                        editorElement.appendChild(
+                            span
+                        );
+                    }
+
+                    if (
+                        index <
+                        parts.length - 1
+                    ) {
+                        editorElement.appendChild(
+                            document.createElement(
+                                "br"
+                            )
+                        );
+                    }
+                }
+            );
+        }
+    );
 }
 
 
@@ -720,7 +1346,10 @@ function connectFieldEvents(
     field,
     input
 ) {
-    if (field.type === "position") {
+    if (
+        field.type === "position" ||
+        field.type === "richtext"
+    ) {
         return;
     }
 
@@ -911,19 +1540,17 @@ async function loadTemplateAssets() {
     const promises = [];
 
     /*
-     * DEFAULT BACKGROUND
-     *
-     * Pokud je v template.json:
-     *
-     * "default": {
-     *     "type": "asset",
-     *     "src": "default.jpg"
-     * }
-     *
-     * a není definovaný assetPath,
-     * obrázek se hledá přímo zde:
-     *
-     * templates/<template-id>/default.jpg
+     * POST 3
+     */
+
+    if (isPost3Template(template)) {
+        await loadPost3Assets();
+        return;
+    }
+
+
+    /*
+     * STANDARD TEMPLATE
      */
 
     if (
@@ -957,11 +1584,6 @@ async function loadTemplateAssets() {
             );
         }
     }
-
-
-    /*
-     * ELEMENT ASSETS
-     */
 
     if (
         Array.isArray(template.elements)
@@ -1009,6 +1631,147 @@ async function loadTemplateAssets() {
     await Promise.all(
         promises
     );
+}
+
+
+/* =========================================================
+   POST 3 ASSETS
+========================================================= */
+
+async function loadPost3Assets() {
+    const template =
+        state.currentTemplate;
+
+    const promises = [];
+
+    const firstBackground =
+        template.pages?.first?.background;
+
+    const contentBackground =
+        template.pages?.content?.background;
+
+    const backgrounds = [
+        firstBackground,
+        contentBackground
+    ];
+
+    backgrounds.forEach(
+        (
+            background,
+            index
+        ) => {
+            if (
+                !background ||
+                !background.default ||
+                background.default.type !==
+                    "asset" ||
+                !background.default.src
+            ) {
+                return;
+            }
+
+            const key =
+                index === 0
+                    ? "post3:firstBackground"
+                    : "post3:contentBackground";
+
+            const basePath =
+                background.default.assetPath ||
+                background.default.assetFolder ||
+                null;
+
+            promises.push(
+                loadAssetImage(
+                    background.default.src,
+                    image => {
+                        state.assets[key] =
+                            image;
+                    },
+                    basePath,
+                    key
+                )
+            );
+        }
+    );
+
+    /*
+     * POST 3 používá dvě možné varianty loga.
+     * Načteme obě bez ohledu na aktuální výběr,
+     * aby změna varianty nemusela znovu načítat asset.
+     */
+
+    const logoBasePath =
+        findPost3LogoBasePath();
+
+    promises.push(
+        loadAssetImage(
+            "logo-blue.svg",
+            image => {
+                state.assets[
+                    "post3:logo-blue"
+                ] = image;
+            },
+            logoBasePath,
+            "post3:logo-blue"
+        )
+    );
+
+    promises.push(
+        loadAssetImage(
+            "logo-white-original.svg",
+            image => {
+                state.assets[
+                    "post3:logo-white"
+                ] = image;
+            },
+            logoBasePath,
+            "post3:logo-white"
+        )
+    );
+
+    /*
+     * Fallback pro původní logo,
+     * pokud by projekt stále používal logo-white.svg.
+     */
+
+    promises.push(
+        loadAssetImage(
+            "logo-white.svg",
+            image => {
+                state.assets[
+                    "post3:logo-white-fallback"
+                ] = image;
+            },
+            logoBasePath,
+            "post3:logo-white-fallback"
+        )
+    );
+
+    await Promise.all(
+        promises
+    );
+}
+
+
+function findPost3LogoBasePath() {
+    const elements = [
+        ...(state.currentTemplate.pages?.first?.elements || []),
+        ...(state.currentTemplate.pages?.content?.elements || [])
+    ];
+
+    const logo =
+        elements.find(
+            element =>
+                element.type === "logo" &&
+                (
+                    element.assetPath ||
+                    element.assetFolder
+                )
+        );
+
+    return logo
+        ? getAssetBasePath(logo)
+        : null;
 }
 
 
@@ -1096,10 +1859,6 @@ function buildAssetPath(
     const cleanSrc =
         src.trim();
 
-    /*
-     * Absolutní URL / data / blob
-     */
-
     if (
         cleanSrc.startsWith("http://") ||
         cleanSrc.startsWith("https://") ||
@@ -1109,27 +1868,11 @@ function buildAssetPath(
         return cleanSrc;
     }
 
-    /*
-     * Absolutní cesta od kořene webu
-     */
-
     if (
         cleanSrc.startsWith("/")
     ) {
         return cleanSrc;
     }
-
-    /*
-     * Explicitní assetPath / assetFolder.
-     *
-     * Například:
-     *
-     * assetPath: "Images/Logo"
-     * src: "logo-blue.svg"
-     *
-     * =>
-     * Images/Logo/logo-blue.svg
-     */
 
     if (basePath) {
         const normalizedBasePath =
@@ -1141,25 +1884,6 @@ function buildAssetPath(
             document.baseURI
         ).href;
     }
-
-    /*
-     * DEFAULTNÍ UMÍSTĚNÍ ASSETU
-     *
-     * Pokud není definovaný
-     * assetPath / assetFolder,
-     * asset patří do složky šablony.
-     *
-     * Například:
-     *
-     * template id:
-     * post-2
-     *
-     * src:
-     * default.jpg
-     *
-     * =>
-     * templates/post-2/default.jpg
-     */
 
     if (
         !state.currentTemplate ||
@@ -1198,13 +1922,6 @@ function getAssetBasePath(element) {
         return element.assetFolder;
     }
 
-    /*
-     * Žádný fallback na Images.
-     *
-     * Asset bez assetPath patří
-     * do složky aktuální šablony.
-     */
-
     return null;
 }
 
@@ -1234,6 +1951,11 @@ function render() {
         return;
     }
 
+    if (isPost3Template(template)) {
+        renderPost3();
+        return;
+    }
+
     ctx.clearRect(
         0,
         0,
@@ -1252,18 +1974,1464 @@ function render() {
 
 
 /* =========================================================
-   BACKGROUND
+   POST 3 RENDER
+========================================================= */
+
+function renderPost3() {
+    const template =
+        state.currentTemplate;
+
+    state.pages =
+        buildPost3Pages();
+
+    if (
+        state.pages.length === 0
+    ) {
+        state.pages = [
+            {
+                type: "first"
+            }
+        ];
+    }
+
+    if (
+        state.currentPage >=
+        state.pages.length
+    ) {
+        state.currentPage =
+            state.pages.length - 1;
+    }
+
+    canvas.width =
+        template.canvas.width;
+
+    canvas.height =
+        template.canvas.height;
+
+    ctx.clearRect(
+        0,
+        0,
+        canvas.width,
+        canvas.height
+    );
+
+    const page =
+        state.pages[
+            state.currentPage
+        ];
+
+    if (
+        page.type === "first"
+    ) {
+        drawPost3FirstPage(
+            template
+        );
+    } else {
+        drawPost3ContentPage(
+            template,
+            page
+        );
+    }
+
+    updatePost3PreviewControls();
+}
+
+
+/* =========================================================
+   POST 3 PAGE BUILDING
+========================================================= */
+
+function buildPost3Pages() {
+    const template =
+        state.currentTemplate;
+
+    const pages = [
+        {
+            type: "first"
+        }
+    ];
+
+    const segments =
+        normalizeRichTextSegments(
+            state.values.body
+        );
+
+    if (
+        segments.length === 0
+    ) {
+        return pages;
+    }
+
+    const contentConfig =
+        template.pages.content;
+
+    const textBox =
+        contentConfig.textBox;
+
+    const baseFont =
+        Number(
+            contentConfig.font?.size ??
+            25
+        );
+
+    const minFont =
+        Number(
+            contentConfig.font?.minSize ??
+            18
+        );
+
+    const shrinkStep =
+        Number(
+            contentConfig.font?.shrinkStep ??
+            1
+        );
+
+    const initialPages =
+        paginateRichText(
+            segments,
+            textBox,
+            contentConfig,
+            baseFont
+        );
+
+    let optimizedPages =
+        initialPages.map(
+            page => ({
+                ...page,
+                segments:
+                    cloneSegments(
+                        page.segments
+                    )
+            })
+        );
+
+    /*
+     * Pokud poslední stránka obsahuje
+     * maximálně 3 řádky, pokusíme se
+     * všechny tyto řádky vrátit
+     * na předchozí stránku.
+     */
+
+    if (
+        optimizedPages.length >= 2
+    ) {
+        const lastIndex =
+            optimizedPages.length - 1;
+
+        const lastPage =
+            optimizedPages[lastIndex];
+
+        if (
+            lastPage.lines.length <= 3
+        ) {
+            const previousPage =
+                optimizedPages[
+                    lastIndex - 1
+                ];
+
+            const combinedSegments =
+                combineSegments(
+                    previousPage.segments,
+                    lastPage.segments
+                );
+
+            const optimizedPrevious =
+                findLargestFontThatFits(
+                    combinedSegments,
+                    textBox,
+                    contentConfig,
+                    baseFont,
+                    minFont,
+                    shrinkStep
+                );
+
+            if (
+                optimizedPrevious
+            ) {
+                optimizedPages =
+                    optimizedPages.slice(
+                        0,
+                        lastIndex - 1
+                    ).concat([
+                        optimizedPrevious
+                    ]);
+            }
+        }
+    }
+
+    optimizedPages.forEach(
+        page => {
+            pages.push({
+                type: "content",
+                segments:
+                    page.segments,
+                lines:
+                    page.lines,
+                fontSize:
+                    page.fontSize,
+                lineHeight:
+                    page.lineHeight
+            });
+        }
+    );
+
+    return pages;
+}
+
+
+/* =========================================================
+   RICH TEXT PAGINATION
+========================================================= */
+
+function paginateRichText(
+    segments,
+    textBox,
+    contentConfig,
+    fontSize
+) {
+    const lines =
+        layoutRichTextLines(
+            segments,
+            textBox.width,
+            contentConfig,
+            fontSize
+        );
+
+    const lineHeight =
+        calculateRichTextLineHeight(
+            contentConfig,
+            fontSize
+        );
+
+    const maxLines =
+        Math.max(
+            1,
+            Math.floor(
+                textBox.height /
+                lineHeight
+            )
+        );
+
+    const pages = [];
+
+    let currentLines = [];
+
+    lines.forEach(
+        line => {
+            if (
+                currentLines.length >=
+                maxLines
+            ) {
+                pages.push(
+                    createRichPageFromLines(
+                        currentLines,
+                        fontSize,
+                        lineHeight
+                    )
+                );
+
+                currentLines = [];
+            }
+
+            currentLines.push(
+                line
+            );
+        }
+    );
+
+    if (
+        currentLines.length > 0
+    ) {
+        pages.push(
+            createRichPageFromLines(
+                currentLines,
+                fontSize,
+                lineHeight
+            )
+        );
+    }
+
+    return pages;
+}
+
+
+function createRichPageFromLines(
+    lines,
+    fontSize,
+    lineHeight
+) {
+    return {
+        lines,
+        segments:
+            linesToSegments(
+                lines
+            ),
+        fontSize,
+        lineHeight
+    };
+}
+
+
+/* =========================================================
+   LAST PAGE OPTIMIZATION
+========================================================= */
+
+function findLargestFontThatFits(
+    segments,
+    textBox,
+    contentConfig,
+    startFontSize,
+    minFontSize,
+    shrinkStep
+) {
+    let fontSize =
+        startFontSize;
+
+    while (
+        fontSize >= minFontSize
+    ) {
+        const lines =
+            layoutRichTextLines(
+                segments,
+                textBox.width,
+                contentConfig,
+                fontSize
+            );
+
+        const lineHeight =
+            calculateRichTextLineHeight(
+                contentConfig,
+                fontSize
+            );
+
+        const totalHeight =
+            lines.length *
+            lineHeight;
+
+        if (
+            totalHeight <=
+            textBox.height
+        ) {
+            return {
+                lines,
+                segments:
+                    linesToSegments(
+                        lines
+                    ),
+                fontSize,
+                lineHeight
+            };
+        }
+
+        fontSize -=
+            shrinkStep;
+    }
+
+    return null;
+}
+
+
+/* =========================================================
+   RICH TEXT LINE LAYOUT
+========================================================= */
+
+function layoutRichTextLines(
+    segments,
+    maxWidth,
+    contentConfig,
+    fontSize
+) {
+    const lines = [];
+
+    let currentLine = [];
+
+    function pushCurrentLine() {
+        if (
+            currentLine.length === 0
+        ) {
+            lines.push({
+                runs: [],
+                height: calculateRichTextLineHeight(
+                    contentConfig,
+                    fontSize
+                )
+            });
+
+            return;
+        }
+
+        lines.push({
+            runs:
+                mergeRichRuns(
+                    currentLine
+                ),
+            height:
+                calculateRichTextLineHeight(
+                    contentConfig,
+                    fontSize
+                )
+        });
+
+        currentLine = [];
+    }
+
+    function currentWidth() {
+        return currentLine.reduce(
+            (
+                total,
+                run
+            ) => {
+                ctx.font =
+                    buildRichTextFont(
+                        run,
+                        fontSize,
+                        contentConfig.font
+                    );
+
+                return (
+                    total +
+                    ctx.measureText(
+                        run.text
+                    ).width
+                );
+            },
+            0
+        );
+    }
+
+    segments.forEach(
+        segment => {
+            const text =
+                String(
+                    segment.text || ""
+                );
+
+            const parts =
+                text.split("\n");
+
+            parts.forEach(
+                (
+                    part,
+                    partIndex
+                ) => {
+
+                    const words =
+                        part.split(
+                            /(\s+)/
+                        );
+
+                    words.forEach(
+                        token => {
+                            if (
+                                token === ""
+                            ) {
+                                return;
+                            }
+
+                            const style = {
+                                bold:
+                                    Boolean(
+                                        segment.bold
+                                    ),
+                                italic:
+                                    Boolean(
+                                        segment.italic
+                                    )
+                            };
+
+                            const pieces =
+                                splitTokenToFitWidth(
+                                    token,
+                                    style,
+                                    currentWidth,
+                                    maxWidth,
+                                    fontSize,
+                                    contentConfig
+                                );
+
+                            pieces.forEach(
+                                piece => {
+                                    if (
+                                        piece === "\n"
+                                    ) {
+                                        pushCurrentLine();
+                                        return;
+                                    }
+
+                                    const pieceWidth =
+                                        measureRichText(
+                                            piece,
+                                            style,
+                                            fontSize,
+                                            contentConfig
+                                        );
+
+                                    const available =
+                                        maxWidth -
+                                        currentWidth();
+
+                                    if (
+                                        pieceWidth <=
+                                        available + 0.001
+                                    ) {
+                                        currentLine.push({
+                                            text:
+                                                piece,
+                                            bold:
+                                                style.bold,
+                                            italic:
+                                                style.italic
+                                        });
+
+                                        return;
+                                    }
+
+                                    /*
+                                     * Pokud jde o mezeru,
+                                     * nepřidáváme ji jako
+                                     * samostatný první znak
+                                     * nového řádku.
+                                     */
+
+                                    if (
+                                        /^\s+$/.test(
+                                            piece
+                                        )
+                                    ) {
+                                        return;
+                                    }
+
+                                    pushCurrentLine();
+
+                                    currentLine.push({
+                                        text:
+                                            piece.trimStart(),
+                                        bold:
+                                            style.bold,
+                                        italic:
+                                            style.italic
+                                    });
+                                }
+                            );
+                        }
+                    );
+
+                    if (
+                        partIndex <
+                        parts.length - 1
+                    ) {
+                        pushCurrentLine();
+                    }
+                }
+            );
+        }
+    );
+
+    if (
+        currentLine.length > 0
+    ) {
+        pushCurrentLine();
+    }
+
+    return lines;
+}
+
+
+function splitTokenToFitWidth(
+    token,
+    style,
+    currentWidth,
+    maxWidth,
+    fontSize,
+    contentConfig
+) {
+    if (
+        measureRichText(
+            token,
+            style,
+            fontSize,
+            contentConfig
+        ) <=
+        maxWidth - currentWidth()
+    ) {
+        return [token];
+    }
+
+    if (
+        /^\s+$/.test(token)
+    ) {
+        return [token];
+    }
+
+    const pieces = [];
+
+    let current = "";
+
+    for (
+        const character of token
+    ) {
+        const test =
+            current +
+            character;
+
+        const width =
+            measureRichText(
+                test,
+                style,
+                fontSize,
+                contentConfig
+            );
+
+        const available =
+            maxWidth -
+            currentWidth();
+
+        if (
+            current &&
+            width >
+                available
+        ) {
+            pieces.push(
+                current
+            );
+
+            current =
+                character;
+        } else {
+            current =
+                test;
+        }
+    }
+
+    if (
+        current
+    ) {
+        pieces.push(
+            current
+        );
+    }
+
+    return pieces;
+}
+
+
+function measureRichText(
+    text,
+    style,
+    fontSize,
+    contentConfig
+) {
+    ctx.font =
+        buildRichTextFont(
+            style,
+            fontSize,
+            contentConfig.font
+        );
+
+    return ctx.measureText(
+        text
+    ).width;
+}
+
+
+function buildRichTextFont(
+    style,
+    fontSize,
+    fontConfig
+) {
+    const family =
+        fontConfig?.family ??
+        GLOBAL_DEFAULTS.textFontFamily;
+
+    const weight =
+        style.bold
+            ? 700
+            : (
+                fontConfig?.weight ??
+                GLOBAL_DEFAULTS.textFontWeight
+            );
+
+    const fontStyle =
+        style.italic
+            ? "italic"
+            : (
+                fontConfig?.style ??
+                GLOBAL_DEFAULTS.textFontStyle
+            );
+
+    return buildFont(
+        fontStyle,
+        weight,
+        fontSize,
+        family
+    );
+}
+
+
+function calculateRichTextLineHeight(
+    contentConfig,
+    fontSize
+) {
+    return (
+        fontSize *
+        (
+            contentConfig.lineHeight ??
+            GLOBAL_DEFAULTS.textLineHeight
+        )
+    );
+}
+
+
+/* =========================================================
+   SEGMENT HELPERS
+========================================================= */
+
+function mergeRichRuns(
+    runs
+) {
+    const result = [];
+
+    runs.forEach(
+        run => {
+            if (
+                !run ||
+                !run.text
+            ) {
+                return;
+            }
+
+            const previous =
+                result[
+                    result.length - 1
+                ];
+
+            if (
+                previous &&
+                previous.bold ===
+                    run.bold &&
+                previous.italic ===
+                    run.italic
+            ) {
+                previous.text +=
+                    run.text;
+            } else {
+                result.push({
+                    text:
+                        run.text,
+                    bold:
+                        Boolean(
+                            run.bold
+                        ),
+                    italic:
+                        Boolean(
+                            run.italic
+                        )
+                });
+            }
+        }
+    );
+
+    return result;
+}
+
+
+function linesToSegments(
+    lines
+) {
+    const segments = [];
+
+    lines.forEach(
+        (
+            line,
+            lineIndex
+        ) => {
+            line.runs.forEach(
+                run => {
+                    const previous =
+                        segments[
+                            segments.length - 1
+                        ];
+
+                    if (
+                        previous &&
+                        previous.bold ===
+                            run.bold &&
+                        previous.italic ===
+                            run.italic
+                    ) {
+                        previous.text +=
+                            run.text;
+                    } else {
+                        segments.push({
+                            text:
+                                run.text,
+                            bold:
+                                Boolean(
+                                    run.bold
+                                ),
+                            italic:
+                                Boolean(
+                                    run.italic
+                                )
+                        });
+                    }
+                }
+            );
+
+            if (
+                lineIndex <
+                lines.length - 1
+            ) {
+                segments.push({
+                    text: "\n",
+                    bold: false,
+                    italic: false
+                });
+            }
+        }
+    );
+
+    return normalizeRichTextSegments(
+        segments
+    );
+}
+
+
+function cloneSegments(
+    segments
+) {
+    return normalizeRichTextSegments(
+        JSON.parse(
+            JSON.stringify(
+                segments || []
+            )
+        )
+    );
+}
+
+
+function combineSegments(
+    first,
+    second
+) {
+    return normalizeRichTextSegments([
+        ...cloneSegments(first),
+        {
+            text: "\n",
+            bold: false,
+            italic: false
+        },
+        ...cloneSegments(second)
+    ]);
+}
+
+
+/* =========================================================
+   POST 3 FIRST PAGE
+========================================================= */
+
+function drawPost3FirstPage(
+    template
+) {
+    const page =
+        template.pages.first;
+
+    drawPost3Background(
+        page.background,
+        "first"
+    );
+
+    drawPost3Elements(
+        page.elements || []
+    );
+}
+
+
+/* =========================================================
+   POST 3 CONTENT PAGE
+========================================================= */
+
+function drawPost3ContentPage(
+    template,
+    page
+) {
+    const config =
+        template.pages.content;
+
+    drawPost3Background(
+        config.background,
+        "content"
+    );
+
+    drawRichTextPage(
+        page,
+        config
+    );
+
+    drawPost3ContentLogo(
+        template
+    );
+}
+
+
+/* =========================================================
+   POST 3 BACKGROUND
+========================================================= */
+
+function drawPost3Background(
+    background,
+    type
+) {
+    const template =
+        state.currentTemplate;
+
+    drawCanvasColor(
+        template.canvas
+    );
+
+    if (!background) {
+        return;
+    }
+
+    const assetKey =
+        type === "first"
+            ? "post3:firstBackground"
+            : "post3:contentBackground";
+
+    const image =
+        state.values.backgroundType ===
+            "custom"
+            ? (
+                background.sourceField &&
+                state.images[
+                    background.sourceField
+                ]
+            )
+            : state.assets[
+                assetKey
+            ];
+
+    if (!image) {
+        /*
+         * Overlay se může vykreslit
+         * i bez obrázku.
+         */
+        if (
+            background.overlay
+        ) {
+            drawFill(
+                background.overlay,
+                0,
+                0,
+                canvas.width,
+                canvas.height
+            );
+        }
+
+        return;
+    }
+
+    drawImageElementWithOptions(
+        image,
+        {
+            box: {
+                x: 0,
+                y: 0,
+                width:
+                    canvas.width,
+                height:
+                    canvas.height
+            },
+
+            fit:
+                background.fit ??
+                GLOBAL_DEFAULTS.imageFit,
+
+            grayscale:
+                background.grayscale ===
+                true,
+
+            opacity:
+                background.opacity !==
+                undefined
+                    ? background.opacity
+                    : undefined
+        }
+    );
+
+    if (
+        background.overlay
+    ) {
+        drawFill(
+            background.overlay,
+            0,
+            0,
+            canvas.width,
+            canvas.height
+        );
+    }
+}
+
+
+/* =========================================================
+   POST 3 ELEMENTS
+========================================================= */
+
+function drawPost3Elements(
+    elements
+) {
+    elements.forEach(
+        element => {
+
+            if (
+                element.visibleWhen &&
+                !evaluateCondition(
+                    element.visibleWhen
+                )
+            ) {
+                return;
+            }
+
+            if (
+                element.hidden === true
+            ) {
+                return;
+            }
+
+            /*
+             * POST 3 title/subtitle používají
+             * vlastní skupinu.
+             */
+
+            if (
+                element.group
+            ) {
+                return;
+            }
+
+            if (
+                element.type === "logo"
+            ) {
+                drawPost3LogoElement(
+                    element
+                );
+
+                return;
+            }
+
+            drawElement(
+                element
+            );
+        }
+    );
+
+    /*
+     * mainText group
+     */
+
+    const group =
+        state.currentTemplate.pages
+            ?.first?.groups
+            ?.mainText;
+
+    if (group) {
+        drawPost3FirstTextGroup(
+            elements,
+            group
+        );
+    }
+}
+
+
+/* =========================================================
+   POST 3 FIRST TEXT GROUP
+========================================================= */
+
+function drawPost3FirstTextGroup(
+    elements,
+    groupConfig
+) {
+    const layouts = [];
+
+    elements.forEach(
+        element => {
+            if (
+                element.group !==
+                "mainText"
+            ) {
+                return;
+            }
+
+            if (
+                element.type !==
+                "text"
+            ) {
+                return;
+            }
+
+            if (
+                element.visibleWhen &&
+                !evaluateCondition(
+                    element.visibleWhen
+                )
+            ) {
+                return;
+            }
+
+            const text =
+                state.values[
+                    element.field
+                ];
+
+            if (
+                text === undefined ||
+                text === null ||
+                text === ""
+            ) {
+                return;
+            }
+
+            const box =
+                resolveElementBox(
+                    element
+                );
+
+            const layout =
+                prepareTextLayout(
+                    element,
+                    box
+                );
+
+            if (!layout) {
+                return;
+            }
+
+            layouts.push({
+                element,
+                box,
+                layout
+            });
+        }
+    );
+
+    if (
+        layouts.length === 0
+    ) {
+        return;
+    }
+
+    const gap =
+        groupConfig.gap !==
+        undefined
+            ? Number(
+                groupConfig.gap
+            )
+            : 0;
+
+    const totalHeight =
+        layouts.reduce(
+            (
+                total,
+                item
+            ) =>
+                total +
+                item.layout.totalHeight,
+            0
+        ) +
+        Math.max(
+            0,
+            layouts.length - 1
+        ) *
+        gap;
+
+    const groupBox =
+        groupConfig.box
+            ? {
+                x:
+                    groupConfig.box.x ??
+                    0,
+                y:
+                    groupConfig.box.y ??
+                    0,
+                width:
+                    groupConfig.box.width ??
+                    canvas.width,
+                height:
+                    groupConfig.box.height ??
+                    canvas.height
+            }
+            : {
+                x: 0,
+                y: 0,
+                width:
+                    canvas.width,
+                height:
+                    canvas.height
+            };
+
+    const verticalAlign =
+        groupConfig.verticalAlign ??
+        "top";
+
+    let currentY;
+
+    if (
+        verticalAlign ===
+        "center"
+    ) {
+        currentY =
+            groupBox.y +
+            (
+                groupBox.height -
+                totalHeight
+            ) / 2;
+    }
+
+    else if (
+        verticalAlign ===
+        "bottom"
+    ) {
+        currentY =
+            groupBox.y +
+            groupBox.height -
+            totalHeight;
+    }
+
+    else {
+        currentY =
+            groupBox.y;
+    }
+
+    layouts.forEach(
+        (
+            item,
+            index
+        ) => {
+            const drawBox = {
+                x:
+                    item.box.x,
+                y:
+                    currentY,
+                width:
+                    item.box.width,
+                height:
+                    item.layout.totalHeight
+            };
+
+            drawPreparedTextElement(
+                item.element,
+                drawBox,
+                item.layout
+            );
+
+            currentY +=
+                item.layout.totalHeight;
+
+            if (
+                index <
+                layouts.length - 1
+            ) {
+                currentY += gap;
+            }
+        }
+    );
+}
+
+
+/* =========================================================
+   POST 3 LOGO
+========================================================= */
+
+function drawPost3LogoElement(
+    element
+) {
+    const variant =
+        state.values.logoVariant ||
+        "white";
+
+    const asset =
+        variant === "blue"
+            ? state.assets[
+                "post3:logo-blue"
+            ]
+            : (
+                state.assets[
+                    "post3:logo-white"
+                ] ||
+                state.assets[
+                    "post3:logo-white-fallback"
+                ]
+            );
+
+    if (!asset) {
+        return;
+    }
+
+    const box =
+        resolveElementBox(
+            element
+        );
+
+    drawImageElementWithOptions(
+        asset,
+        {
+            box,
+            fit:
+                element.fit ??
+                "contain",
+            opacity:
+                element.opacity,
+            border:
+                element.border,
+            borderRadius:
+                element.borderRadius
+        }
+    );
+}
+
+
+/* =========================================================
+   POST 3 CONTENT LOGO
+========================================================= */
+
+function drawPost3ContentLogo(
+    template
+) {
+    if (
+        state.values.logoVisible !==
+        true
+    ) {
+        return;
+    }
+
+    if (
+        state.values.logoOnContent !==
+        true
+    ) {
+        return;
+    }
+
+    const elements =
+        template.pages.content
+            .elements || [];
+
+    elements.forEach(
+        element => {
+            if (
+                element.type !==
+                "logo"
+            ) {
+                return;
+            }
+
+            if (
+                element.visibleWhen &&
+                !evaluateCondition(
+                    element.visibleWhen
+                )
+            ) {
+                return;
+            }
+
+            drawPost3LogoElement(
+                element
+            );
+        }
+    );
+}
+
+
+/* =========================================================
+   POST 3 RICH TEXT DRAWING
+========================================================= */
+
+function drawRichTextPage(
+    page,
+    config
+) {
+    const box =
+        config.textBox;
+
+    const fontSize =
+        page.fontSize ??
+        config.font?.size ??
+        25;
+
+    const lineHeight =
+        page.lineHeight ??
+        calculateRichTextLineHeight(
+            config,
+            fontSize
+        );
+
+    const lines =
+        page.lines ||
+        [];
+
+    ctx.save();
+
+    ctx.fillStyle =
+        config.color ??
+        "#FFFFFF";
+
+    ctx.textAlign =
+        config.align ??
+        "left";
+
+    ctx.textBaseline =
+        "top";
+
+    lines.forEach(
+        (
+            line,
+            lineIndex
+        ) => {
+            let currentX =
+                box.x;
+
+            line.runs.forEach(
+                run => {
+                    if (
+                        !run.text
+                    ) {
+                        return;
+                    }
+
+                    ctx.font =
+                        buildRichTextFont(
+                            run,
+                            fontSize,
+                            config.font
+                        );
+
+                    ctx.fillText(
+                        run.text,
+                        currentX,
+                        box.y +
+                        lineIndex *
+                        lineHeight
+                    );
+
+                    currentX +=
+                        ctx.measureText(
+                            run.text
+                        ).width;
+                }
+            );
+        }
+    );
+
+    ctx.restore();
+}
+
+
+/* =========================================================
+   STANDARD BACKGROUND
 ========================================================= */
 
 function drawCanvasBackground(
     template
 ) {
-    /*
-     * Pokud template.json nemá
-     * "background", žádné pozadí
-     * se automaticky nepřidává.
-     */
-
     const background =
         template.background;
 
@@ -1275,22 +3443,11 @@ function drawCanvasBackground(
         return;
     }
 
-
-    /*
-     * Základní barva plátna.
-     */
-
     drawCanvasColor(
         template.canvas
     );
 
-
     let image = null;
-
-
-    /*
-     * VLASTNÍ OBRÁZEK
-     */
 
     if (
         state.values.backgroundType ===
@@ -1306,11 +3463,6 @@ function drawCanvasBackground(
             ];
     }
 
-
-    /*
-     * DEFAULTNÍ OBRÁZEK
-     */
-
     else if (
         state.values.backgroundType !==
             "custom" &&
@@ -1323,21 +3475,13 @@ function drawCanvasBackground(
                 .defaultBackground;
     }
 
-
-    /*
-     * Pokud obrázek není načtený,
-     * nic dalšího nevykreslujeme.
-     */
-
     if (!image) {
         return;
     }
 
-
     const fit =
         background.fit ??
         GLOBAL_DEFAULTS.imageFit;
-
 
     drawImageElementWithOptions(
         image,
@@ -1367,14 +3511,6 @@ function drawCanvasBackground(
                 background.borderRadius
         }
     );
-
-
-    /*
-     * OVERLAY
-     *
-     * Vykreslí se pouze tehdy,
-     * pokud je skutečně definovaný.
-     */
 
     if (
         background.overlay
@@ -1428,16 +3564,6 @@ function drawElements(template) {
         return;
     }
 
-    /*
-     * Pořadí v template.json
-     * = pořadí vrstev.
-     *
-     * Group:
-     * Pokud je element součástí group,
-     * celá skupina se vykreslí při prvním
-     * výskytu dané skupiny.
-     */
-
     const renderedGroups =
         new Set();
 
@@ -1458,9 +3584,6 @@ function drawElements(template) {
             ) {
                 return;
             }
-
-
-            /* GROUP */
 
             if (element.group) {
                 const groupId =
@@ -1495,9 +3618,6 @@ function drawElements(template) {
 
                 return;
             }
-
-
-            /* BĚŽNÝ ELEMENT */
 
             drawElement(
                 element
@@ -3067,11 +5187,6 @@ function drawFill(
 ) {
     ctx.save();
 
-    /*
-     * Pokud má fill vlastní opacity,
-     * aplikujeme ji zde.
-     */
-
     if (
         fill &&
         typeof fill === "object" &&
@@ -3110,10 +5225,6 @@ function createFillStyle(
     fill,
     box
 ) {
-    /*
-     * Jednobarevná výplň
-     */
-
     if (
         typeof fill ===
         "string"
@@ -3128,10 +5239,6 @@ function createFillStyle(
     ) {
         return "#FFFFFF";
     }
-
-    /*
-     * LINEAR GRADIENT
-     */
 
     if (
         fill.type ===
@@ -3201,10 +5308,6 @@ function createFillStyle(
         return gradient;
     }
 
-    /*
-     * RADIAL GRADIENT
-     */
-
     if (
         fill.type ===
         "radial-gradient"
@@ -3240,11 +5343,6 @@ function createFillStyle(
 
         return gradient;
     }
-
-    /*
-     * Pokud je objekt s color,
-     * použijeme color.
-     */
 
     if (
         fill.color !==
@@ -3314,6 +5412,266 @@ function applyElementOpacity(
             element.opacity;
     }
 }
+
+
+/* =========================================================
+   POST 3 PREVIEW CONTROLS
+========================================================= */
+
+let post3PreviewContainer = null;
+
+function ensurePost3PreviewControls() {
+    if (
+        post3PreviewContainer ||
+        !isPost3Template()
+    ) {
+        return;
+    }
+
+    post3PreviewContainer =
+        document.createElement("div");
+
+    post3PreviewContainer.id =
+        "post3-preview-controls";
+
+    post3PreviewContainer.style.marginTop =
+        "12px";
+
+    post3PreviewContainer.style.display =
+        "flex";
+
+    post3PreviewContainer.style.flexDirection =
+        "column";
+
+    post3PreviewContainer.style.gap =
+        "10px";
+
+    canvas.parentElement?.appendChild(
+        post3PreviewContainer
+    );
+}
+
+
+function updatePost3PreviewControls() {
+    if (
+        !isPost3Template()
+    ) {
+        if (
+            post3PreviewContainer
+        ) {
+            post3PreviewContainer.remove();
+            post3PreviewContainer = null;
+        }
+
+        return;
+    }
+
+    ensurePost3PreviewControls();
+
+    if (
+        !post3PreviewContainer
+    ) {
+        return;
+    }
+
+    post3PreviewContainer.innerHTML = "";
+
+    const navigation =
+        document.createElement("div");
+
+    navigation.style.display =
+        "flex";
+
+    navigation.style.alignItems =
+        "center";
+
+    navigation.style.justifyContent =
+        "center";
+
+    navigation.style.gap =
+        "18px";
+
+    const previous =
+        document.createElement("button");
+
+    previous.type = "button";
+    previous.textContent = "‹";
+
+    previous.disabled =
+        state.currentPage <= 0;
+
+    previous.addEventListener(
+        "click",
+        () => {
+            if (
+                state.currentPage > 0
+            ) {
+                state.currentPage--;
+                render();
+            }
+        }
+    );
+
+    const counter =
+        document.createElement("span");
+
+    counter.textContent =
+        `${state.currentPage + 1} / ${state.pages.length}`;
+
+    const next =
+        document.createElement("button");
+
+    next.type = "button";
+    next.textContent = "›";
+
+    next.disabled =
+        state.currentPage >=
+        state.pages.length - 1;
+
+    next.addEventListener(
+        "click",
+        () => {
+            if (
+                state.currentPage <
+                state.pages.length - 1
+            ) {
+                state.currentPage++;
+                render();
+            }
+        }
+    );
+
+    navigation.appendChild(
+        previous
+    );
+
+    navigation.appendChild(
+        counter
+    );
+
+    navigation.appendChild(
+        next
+    );
+
+    post3PreviewContainer.appendChild(
+        navigation
+    );
+
+    const thumbnails =
+        document.createElement("div");
+
+    thumbnails.style.display =
+        "flex";
+
+    thumbnails.style.flexWrap =
+        "wrap";
+
+    thumbnails.style.gap =
+        "8px";
+
+    thumbnails.style.justifyContent =
+        "center";
+
+    state.pages.forEach(
+        (
+            page,
+            index
+        ) => {
+            const thumbnail =
+                document.createElement(
+                    "button"
+                );
+
+            thumbnail.type =
+                "button";
+
+            thumbnail.textContent =
+                String(index + 1);
+
+            thumbnail.title =
+                `Strana ${index + 1}`;
+
+            thumbnail.className =
+                "post3-thumbnail";
+
+            if (
+                index ===
+                state.currentPage
+            ) {
+                thumbnail.classList.add(
+                    "post3-thumbnail-active"
+                );
+            }
+
+            thumbnail.addEventListener(
+                "click",
+                () => {
+                    state.currentPage =
+                        index;
+
+                    render();
+                }
+            );
+
+            thumbnails.appendChild(
+                thumbnail
+            );
+        }
+    );
+
+    post3PreviewContainer.appendChild(
+        thumbnails
+    );
+}
+
+
+/* =========================================================
+   KEYBOARD NAVIGATION
+========================================================= */
+
+document.addEventListener(
+    "keydown",
+    event => {
+        if (
+            !isPost3Template()
+        ) {
+            return;
+        }
+
+        const active =
+            document.activeElement;
+
+        if (
+            active &&
+            (
+                active.tagName ===
+                    "INPUT" ||
+                active.tagName ===
+                    "TEXTAREA" ||
+                active.isContentEditable
+            )
+        ) {
+            return;
+        }
+
+        if (
+            event.key === "ArrowLeft" &&
+            state.currentPage > 0
+        ) {
+            state.currentPage--;
+            render();
+        }
+
+        else if (
+            event.key === "ArrowRight" &&
+            state.currentPage <
+                state.pages.length - 1
+        ) {
+            state.currentPage++;
+            render();
+        }
+    }
+);
 
 
 /* =========================================================
@@ -3420,6 +5778,22 @@ function hasFieldValue(
         );
     }
 
+    if (
+        field.type ===
+        "richtext"
+    ) {
+        return (
+            Array.isArray(value) &&
+            value.some(
+                segment =>
+                    segment &&
+                    typeof segment.text ===
+                        "string" &&
+                    segment.text.length > 0
+            )
+        );
+    }
+
     return (
         value !== undefined &&
         value !== null &&
@@ -3434,10 +5808,17 @@ function hasFieldValue(
 
 downloadButton.addEventListener(
     "click",
-    () => {
+    async () => {
         if (
             !validateFields()
         ) {
+            return;
+        }
+
+        if (
+            isPost3Template()
+        ) {
+            await downloadPost3Pages();
             return;
         }
 
@@ -3475,6 +5856,143 @@ downloadButton.addEventListener(
 
 
 /* =========================================================
+   POST 3 DOWNLOAD
+========================================================= */
+
+async function downloadPost3Pages() {
+    const previousPage =
+        state.currentPage;
+
+    const pages =
+        state.pages.length
+            ? state.pages
+            : buildPost3Pages();
+
+    for (
+        let index = 0;
+        index < pages.length;
+        index++
+    ) {
+        state.currentPage =
+            index;
+
+        render();
+
+        await waitForRender();
+
+        const blob =
+            await canvasToBlob(
+                canvas
+            );
+
+        if (!blob) {
+            continue;
+        }
+
+        downloadBlob(
+            blob,
+            `${state.currentTemplate.id}-${index + 1}.png`
+        );
+
+        /*
+         * Malá prodleva mezi soubory,
+         * aby prohlížeč neblokoval více
+         * automatických downloadů.
+         */
+
+        await delay(120);
+    }
+
+    state.currentPage =
+        Math.min(
+            previousPage,
+            pages.length - 1
+        );
+
+    render();
+}
+
+
+function canvasToBlob(
+    targetCanvas
+) {
+    return new Promise(
+        resolve => {
+            targetCanvas.toBlob(
+                blob =>
+                    resolve(blob),
+                "image/png"
+            );
+        }
+    );
+}
+
+
+function downloadBlob(
+    blob,
+    filename
+) {
+    const url =
+        URL.createObjectURL(
+            blob
+        );
+
+    const link =
+        document.createElement(
+            "a"
+        );
+
+    link.href =
+        url;
+
+    link.download =
+        filename;
+
+    document.body.appendChild(
+        link
+    );
+
+    link.click();
+
+    link.remove();
+
+    setTimeout(
+        () =>
+            URL.revokeObjectURL(
+                url
+            ),
+        1000
+    );
+}
+
+
+function waitForRender() {
+    return new Promise(
+        resolve =>
+            requestAnimationFrame(
+                () =>
+                    requestAnimationFrame(
+                        resolve
+                    )
+            )
+    );
+}
+
+
+function delay(
+    milliseconds
+) {
+    return new Promise(
+        resolve =>
+            setTimeout(
+                resolve,
+                milliseconds
+            )
+    );
+}
+
+
+/* =========================================================
    BACK
 ========================================================= */
 
@@ -3487,6 +6005,15 @@ backButton.addEventListener(
         state.values = {};
         state.images = {};
         state.assets = {};
+        state.pages = [];
+        state.currentPage = 0;
+
+        if (
+            post3PreviewContainer
+        ) {
+            post3PreviewContainer.remove();
+            post3PreviewContainer = null;
+        }
 
         editor.classList.add(
             "hidden"

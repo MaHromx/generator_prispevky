@@ -1,0 +1,285 @@
+{
+    "id": "post-3",
+    "name": "POST 3",
+    "description": "Vícestránkový Instagramový carousel s automatickým dělením textu.",
+
+    "canvas": {
+        "width": 1080,
+        "height": 1350,
+        "background": "#000000"
+    },
+
+    "fields": [
+        {
+            "id": "title",
+            "type": "textarea",
+            "label": "Nadpis",
+            "required": true,
+            "placeholder": "Napiš nadpis..."
+        },
+        {
+            "id": "subtitle",
+            "type": "textarea",
+            "label": "Podnadpis",
+            "placeholder": "Napiš podnadpis..."
+        },
+        {
+            "id": "body",
+            "type": "richtext",
+            "label": "Text",
+            "required": true,
+            "placeholder": "Napiš text...",
+            "formatting": {
+                "bold": true,
+                "italic": true,
+                "undo": true,
+                "redo": true
+            }
+        },
+        {
+            "id": "logoVisible",
+            "type": "checkbox",
+            "label": "Zobrazit logo?",
+            "default": true
+        },
+        {
+            "id": "logoVariant",
+            "type": "select",
+            "label": "Varianta loga",
+            "options": [
+                {
+                    "value": "white",
+                    "label": "Bílé logo"
+                }
+            ],
+            "default": "white",
+            "visibleWhen": {
+                "field": "logoVisible",
+                "equals": true
+            }
+        },
+        {
+            "id": "logoPosition",
+            "type": "position",
+            "label": "Pozice loga",
+            "options": [
+                {
+                    "value": "bottom-left",
+                    "label": "Vlevo dole"
+                },
+                {
+                    "value": "bottom-center",
+                    "label": "Uprostřed dole"
+                },
+                {
+                    "value": "bottom-right",
+                    "label": "Vpravo dole"
+                }
+            ],
+            "default": "bottom-center",
+            "visibleWhen": {
+                "field": "logoVisible",
+                "equals": true
+            }
+        },
+        {
+            "id": "logoOnContent",
+            "type": "checkbox",
+            "label": "Zobrazit logo i na dalších stranách?",
+            "default": false,
+            "visibleWhen": {
+                "field": "logoVisible",
+                "equals": true
+            }
+        }
+    ],
+
+    "pages": {
+        "first": {
+            "background": {
+                "default": {
+                    "type": "asset",
+                    "src": "default.jpg"
+                },
+                "fit": "cover",
+                "grayscale": true,
+                "overlay": {
+                    "color": "#014EA1",
+                    "opacity": 0.81
+                }
+            },
+
+            "groups": {
+                "mainText": {
+                    "box": {
+                        "x": 116,
+                        "y": 0,
+                        "width": 848,
+                        "height": 1350
+                    },
+                    "gap": 58,
+                    "verticalAlign": "center"
+                }
+            },
+
+            "elements": [
+                {
+                    "type": "text",
+                    "field": "title",
+                    "group": "mainText",
+                    "box": {
+                        "x": 116,
+                        "y": 0,
+                        "width": 848,
+                        "height": 1350
+                    },
+                    "font": {
+                        "family": "Montserrat",
+                        "weight": 800,
+                        "size": 72.63,
+                        "minSize": 30,
+                        "shrinkStep": 1
+                    },
+                    "color": "#FFFFFF",
+                    "align": "center",
+                    "verticalAlign": "center",
+                    "lineHeight": 1.15,
+                    "maxLines": 5,
+                    "wrap": "word",
+                    "breakLongWords": true,
+                    "preserveNewlines": true
+                },
+                {
+                    "type": "text",
+                    "field": "subtitle",
+                    "group": "mainText",
+                    "box": {
+                        "x": 116,
+                        "y": 0,
+                        "width": 848,
+                        "height": 1350
+                    },
+                    "font": {
+                        "family": "Montserrat",
+                        "weight": 500,
+                        "size": 45,
+                        "minSize": 30,
+                        "shrinkStep": 1
+                    },
+                    "color": "#FFFFFF",
+                    "align": "center",
+                    "verticalAlign": "center",
+                    "lineHeight": 1.15,
+                    "maxLines": 8,
+                    "wrap": "word",
+                    "breakLongWords": true,
+                    "preserveNewlines": true
+                },
+                {
+                    "type": "logo",
+                    "id": "post3-logo",
+                    "src": "logo-white.svg",
+                    "assetPath": "Images/Logo",
+                    "box": {
+                        "x": 0,
+                        "y": 0,
+                        "width": 158,
+                        "height": 198
+                    },
+                    "fit": "contain",
+                    "visibleWhen": {
+                        "field": "logoVisible",
+                        "equals": true
+                    },
+                    "position": {
+                        "field": "logoPosition",
+                        "positions": {
+                            "bottom-left": {
+                                "x": 37,
+                                "y": 1111
+                            },
+                            "bottom-center": {
+                                "x": 461,
+                                "y": 1111
+                            },
+                            "bottom-right": {
+                                "x": 885,
+                                "y": 1111
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+
+        "content": {
+            "textField": "body",
+            "background": {
+                "default": {
+                    "type": "asset",
+                    "src": "default.jpg"
+                },
+                "fit": "cover",
+                "grayscale": true,
+                "opacity": 0.28,
+                "overlay": {
+                    "color": "#014EA1",
+                    "opacity": 0.81
+                }
+            },
+            "textBox": {
+                "x": 100,
+                "y": 155,
+                "width": 860,
+                "height": 975
+            },
+            "font": {
+                "family": "Montserrat",
+                "weight": 400,
+                "size": 25,
+                "minSize": 18,
+                "shrinkStep": 1
+            },
+            "color": "#FFFFFF",
+            "align": "left",
+            "lineHeight": 1.15,
+            "maxPages": 100,
+            "elements": [
+                {
+                    "type": "logo",
+                    "id": "post3-content-logo",
+                    "src": "logo-white.svg",
+                    "assetPath": "Images/Logo",
+                    "box": {
+                        "x": 0,
+                        "y": 0,
+                        "width": 158,
+                        "height": 198
+                    },
+                    "fit": "contain",
+                    "visibleWhen": {
+                        "field": "logoOnContent",
+                        "equals": true
+                    },
+                    "position": {
+                        "field": "logoPosition",
+                        "positions": {
+                            "bottom-left": {
+                                "x": 8,
+                                "y": 1173
+                            },
+                            "bottom-center": {
+                                "x": 461,
+                                "y": 1173
+                            },
+                            "bottom-right": {
+                                "x": 914,
+                                "y": 1173
+                            }
+                        }
+                    }
+                }
+            ]
+        }
+    }
+}

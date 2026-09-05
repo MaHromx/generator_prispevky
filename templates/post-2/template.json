@@ -161,7 +161,7 @@
 
         {
             "type": "logo",
-            "src": "logo-blue.svg",
+            "src": "logo-white.svg",
             "assetPath": "Images/Logo",
 
             "box": {

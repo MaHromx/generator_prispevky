@@ -236,7 +236,7 @@
             "font": {
                 "family": "Montserrat",
                 "weight": 400,
-                "size": 25,
+                "size": 35,
                 "minSize": 18,
                 "shrinkStep": 1
             },

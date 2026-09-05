@@ -1,0 +1,204 @@
+{
+    "id": "post-2",
+    "name": "POST 2",
+    "description": "Instagramový příspěvek s nadpisem, podnadpisem a logem.",
+
+    "canvas": {
+        "width": 1080,
+        "height": 1350,
+        "background": "#000000"
+    },
+
+    "fields": [
+        {
+            "id": "backgroundType",
+            "type": "select",
+            "label": "Pozadí",
+            "options": [
+                {
+                    "value": "default",
+                    "label": "Základní"
+                },
+                {
+                    "value": "custom",
+                    "label": "Vlastní obrázek"
+                }
+            ],
+            "default": "default"
+        },
+        {
+            "id": "background",
+            "type": "image",
+            "label": "Vlastní obrázek",
+            "accept": "image/*",
+            "visibleWhen": {
+                "field": "backgroundType",
+                "equals": "custom"
+            },
+            "requiredWhen": {
+                "field": "backgroundType",
+                "equals": "custom"
+            }
+        },
+        {
+            "id": "text",
+            "type": "textarea",
+            "label": "Nadpis",
+            "required": true,
+            "placeholder": "Napiš nadpis..."
+        },
+        {
+            "id": "subtitle",
+            "type": "textarea",
+            "label": "Podnadpis",
+            "placeholder": "Napiš podnadpis..."
+        },
+        {
+            "id": "logoPosition",
+            "type": "position",
+            "label": "Pozice loga",
+            "options": [
+                {
+                    "value": "bottom-left",
+                    "label": "Vlevo dole"
+                },
+                {
+                    "value": "bottom-center",
+                    "label": "Uprostřed dole"
+                },
+                {
+                    "value": "bottom-right",
+                    "label": "Vpravo dole"
+                }
+            ],
+            "default": "bottom-center"
+        }
+    ],
+
+    "background": {
+        "type": "image",
+        "sourceField": "background",
+
+        "default": {
+            "type": "asset",
+            "src": "Images/default.jpg"
+        },
+
+        "fit": "cover",
+        "grayscale": true,
+
+        "overlay": {
+            "color": "#014EA1",
+            "opacity": 0.81
+        }
+    },
+
+    "groups": {
+        "mainText": {
+            "box": {
+                "x": 116,
+                "y": 0,
+                "width": 848,
+                "height": 1350
+            },
+            "gap": 58,
+            "verticalAlign": "center"
+        }
+    },
+
+    "elements": [
+        {
+            "type": "text",
+            "field": "text",
+            "group": "mainText",
+
+            "box": {
+                "x": 116,
+                "y": 0,
+                "width": 848,
+                "height": 1350
+            },
+
+            "font": {
+                "family": "Montserrat",
+                "weight": 800,
+                "size": 72.63,
+                "minSize": 30,
+                "shrinkStep": 1
+            },
+
+            "color": "#FFFFFF",
+            "align": "center",
+            "lineHeight": 1.15,
+            "maxLines": 5,
+            "wrap": "word",
+            "breakLongWords": true,
+            "preserveNewlines": true
+        },
+
+        {
+            "type": "text",
+            "field": "subtitle",
+            "group": "mainText",
+
+            "box": {
+                "x": 116,
+                "y": 0,
+                "width": 848,
+                "height": 1350
+            },
+
+            "font": {
+                "family": "Montserrat",
+                "weight": 500,
+                "size": 45,
+                "minSize": 30,
+                "shrinkStep": 1
+            },
+
+            "color": "#FFFFFF",
+            "align": "center",
+            "lineHeight": 1.15,
+            "maxLines": 8,
+            "wrap": "word",
+            "breakLongWords": true,
+            "preserveNewlines": true
+        },
+
+        {
+            "type": "logo",
+            "src": "logo-blue.svg",
+            "assetPath": "Images/Logo",
+
+            "box": {
+                "x": 0,
+                "y": 0,
+                "width": 158,
+                "height": 198
+            },
+
+            "fit": "contain",
+
+            "position": {
+                "field": "logoPosition",
+
+                "positions": {
+                    "bottom-left": {
+                        "x": 37,
+                        "y": 1229
+                    },
+
+                    "bottom-center": {
+                        "x": 461,
+                        "y": 1229
+                    },
+
+                    "bottom-right": {
+                        "x": 885,
+                        "y": 1229
+                    }
+                }
+            }
+        }
+    ]
+}

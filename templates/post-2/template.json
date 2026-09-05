@@ -1,3 +1,4 @@
+```json
 {
     "id": "post-2",
     "name": "POST 2",
@@ -81,7 +82,7 @@
 
         "default": {
             "type": "asset",
-            "src": "Images/default.jpg"
+            "src": "default.jpg"
         },
 
         "fit": "cover",
@@ -202,3 +203,4 @@
         }
     ]
 }
+```

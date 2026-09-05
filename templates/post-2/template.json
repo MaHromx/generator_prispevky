@@ -54,6 +54,22 @@
             "placeholder": "Napiš podnadpis..."
         },
         {
+            "id": "logoVisible",
+            "type": "select",
+            "label": "Zobrazit logo",
+            "options": [
+                {
+                    "value": "yes",
+                    "label": "ANO"
+                },
+                {
+                    "value": "no",
+                    "label": "NE"
+                }
+            ],
+            "default": "yes"
+        },
+        {
             "id": "logoPosition",
             "type": "position",
             "label": "Pozice loga",
@@ -71,7 +87,11 @@
                     "label": "Vpravo dole"
                 }
             ],
-            "default": "bottom-center"
+            "default": "bottom-center",
+            "visibleWhen": {
+                "field": "logoVisible",
+                "equals": "yes"
+            }
         }
     ],
 
@@ -172,6 +192,11 @@
             },
 
             "fit": "contain",
+
+            "visibleWhen": {
+                "field": "logoVisible",
+                "equals": "yes"
+            },
 
             "position": {
                 "field": "logoPosition",
